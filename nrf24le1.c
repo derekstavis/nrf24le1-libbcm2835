@@ -1,142 +1,30 @@
-#include <asm/uaccess.h>
-#include <asm/errno.h>
-#include <linux/types.h>
-#include <linux/fs.h>
-#include <linux/init.h>
-#include <linux/module.h>
-#include <linux/cdev.h>
-#include <linux/clk.h>
-#include <linux/err.h>
-#include <linux/delay.h>
-#include <linux/device.h>
-#include <linux/mutex.h>
-#include <linux/platform_device.h>
-#include <linux/io.h>
-#include <linux/spi/spi.h>
-#include <asm/gpio.h>
-#include <linux/net.h>
+#ifndef __NRF24LE1_H__
+#define __NRF24LE1_H__
+
+#include "nrf24le1.h"
+#include "wiring.h"
 
 #define NAME "nrf24le1"
 
-/* spi commands */
-#define SPICMD_WREN      0x06
-#define SPICMD_WRDIS     0x04
-#define SPICMD_RDSR      0x05
-#define SPICMD_WRSR      0x01
-#define SPICMD_READ      0x03
-#define SPICMD_PROGRAM   0x02
-#define SPICMD_ERASEPAGE 0x52
-#define SPICMD_ERASEALL  0x62
-#define SPICMD_RDFPCR    0x89
-#define SPICMD_RDISMB    0x85
-#define SPICMD_ENDEBUG   0x86
-
-#define FSR_RESERVED0 (1 << 0)
-#define FSR_RESERVED1 (1 << 1)
-#define FSR_RDISMB    (1 << 2)
-#define FSR_INFEN     (1 << 3)
-#define FSR_RDYN      (1 << 4)
-#define FSR_WEN       (1 << 5)
-#define FSR_STP       (1 << 6)
-#define FSR_ENDEBUG   (1 << 7)
-
-/* NVM Extended endurance data  pages: 32,33 */
-#define NVM_NORMAL_PAGE0           34
-#define NVM_NORMAL_PAGE0_INI_ADDR  0x4400
-#define NVM_NORMAL_PAGE0_END_ADDR  0x45FF
-#define NVM_NORMAL_PAGE1           35
-#define NVM_NORMAL_PAGE1_INI_ADDR  0x4600
-#define NVM_NORMAL_PAGE1_END_ADDR  0x47FF
-#define NVM_NORMAL_NUMBER_OF_PAGES 2
-#define NVM_NORMAL_MEM_SIZE        (NVM_NORMAL_NUMBER_OF_PAGES * NRF_PAGE_SIZE)
-
-#define NRF_PAGE_SIZE     (512)
-#define N_PAGES           (32)
-#define MAX_FIRMWARE_SIZE (NRF_PAGE_SIZE * N_PAGES) /* 16Kb */
-#define N_BYTES_FOR_WRITE (16)
-#define N_BYTES_FOR_READ  (16)
-#define NRF_SPI_SPEED_HZ  (4500 * 1000) /* 4.5Mhz */
-
-#define GPIO_RESET       AT91_PIN_PB29
-#define GPIO_PROG        AT91_PIN_PB19
-
-static int uhet_create(void);
-static void uhet_destroy(void);
 void uhet_record_init(void);
 void uhet_record_end(void);
 
-static ssize_t uhet_read(struct file *, char __user *, size_t, loff_t *);
-static ssize_t uhet_write(struct file *, const char *, size_t, loff_t *);
-static int uhet_open(struct inode *, struct file *);
-static int uhet_release(struct inode *, struct file *);
+void _erase_all(void);
+void _erase_page(unsigned i);
+void _erase_program_pages(void);
 
-static int uhet_spi_probe(struct spi_device *spi);
-static int uhet_spi_remove(struct spi_device *spi);
-
-static ssize_t da_test_show(struct device *, struct device_attribute *, char *);
-static ssize_t da_infopage_show(struct device *, struct device_attribute *,
-				char *);
-static ssize_t da_nvm_normal_show(struct device *, struct device_attribute *,
-				  char *);
-static ssize_t da_enable_program_show(struct device *,
-				      struct device_attribute *, char *);
-
-static ssize_t da_infopage_store(struct device *, struct device_attribute *,
-				 const char *, size_t);
-static ssize_t da_nvm_normal_store(struct device *, struct device_attribute *,
-				   const char *, size_t);
-static ssize_t da_enable_program_store(struct device *,
-				       struct device_attribute *, const char *,
-				       size_t);
-static ssize_t da_erase_all_store(struct device *, struct device_attribute *,
-				  const char *, size_t);
-
-static void _erase_all(void);
-static void _erase_page(unsigned i);
-static void _erase_program_pages(void);
-
-static dev_t devno;
-static struct class *class = NULL;
-static struct cdev cdev;
-static struct device *device = NULL;
-static struct spi_device *uhet_spi_device = NULL;
-static DEFINE_MUTEX(mutex);
-static DEVICE_ATTR(infopage, 0600, da_infopage_show, da_infopage_store);
-static DEVICE_ATTR(test, 0600, da_test_show, NULL);
-static DEVICE_ATTR(enable_program, 0600, da_enable_program_show,
-		   da_enable_program_store);
-static DEVICE_ATTR(erase_all, 0600, NULL, da_erase_all_store);
-static DEVICE_ATTR(nvm_normal, 0600, da_nvm_normal_show, da_nvm_normal_store);
-
-static int _enable_program = 0;
-
-static struct file_operations fops = {
-	.owner = THIS_MODULE,
-	.read = uhet_read,
-	.write = uhet_write,
-	.open = uhet_open,
-	.release = uhet_release,
-};
-
-static struct spi_driver uhet_spi_driver = {
-	.driver = {
-		   .name = "nrf24le1",
-		   .owner = THIS_MODULE,
-		   },
-	.probe = uhet_spi_probe,
-	.remove = __devexit_p(uhet_spi_remove),
-};
+int _enable_program = 0;
 
 #define debug(fmt, args...) \
 { \
-	printk(KERN_DEBUG "[" NAME "] %s: " fmt "\n", __func__, ##args); \
+	printf("[" NAME "] %s: " fmt "\n", __func__, ##args); \
 }
 
 #define write_then_read(out,n_out,in,n_in) \
 ({ \
 	int __ret = 0; \
 \
-	__ret = spi_write_then_read(uhet_spi_device,out,n_out,in,n_in); \
+	__ret = wiring_write_then_read(out,n_out,in,n_in); \
 	if (0 > __ret){ \
 		debug("falha na operacao de write_then_read"); \
 	} \
@@ -144,7 +32,13 @@ static struct spi_driver uhet_spi_driver = {
 	__ret; \
 })
 
-static void _wait_for_ready(void)
+void enable_program(uint8_t state)
+{
+	wiring_set_gpio_value(GPIO_PROG, state);	
+	_enable_program = state;
+}
+
+void _wait_for_ready(void)
 {
 	uint8_t cmd[1] = { SPICMD_RDSR };
 	uint8_t fsr[1] = { 0xAA };
@@ -158,13 +52,13 @@ static void _wait_for_ready(void)
 		}
 		count++;
 
-		spi_write_then_read(uhet_spi_device, cmd, 1, fsr, 1);
+		wiring_write_then_read(cmd, 1, fsr, 1);
 		udelay(500);
 
 	} while (*fsr & FSR_RDYN);
 }
 
-static int _enable_infopage_access(void)
+int _enable_infopage_access(void)
 {
 	uint8_t cmd[2];
 	uint8_t in[1];
@@ -194,7 +88,7 @@ static int _enable_infopage_access(void)
 	return 0;
 }
 
-static int _read_infopage(char *buf)
+int _read_infopage(char *buf)
 {
 	int i;
 	int ret = 0;
@@ -223,7 +117,7 @@ static int _read_infopage(char *buf)
 	return p - buf;		// numero de bytes lidos;
 }
 
-static int _read_nvm_normal(char *buf)
+int _read_nvm_normal(char *buf)
 {
 	int i;
 	int ret = 0;
@@ -252,7 +146,7 @@ static int _read_nvm_normal(char *buf)
 	return p - buf;		// numero de bytes lidos;
 }
 
-static int _disable_infopage_access(void)
+int _disable_infopage_access(void)
 {
 	uint8_t cmd[2];
 	uint8_t in[1];
@@ -282,32 +176,30 @@ static int _disable_infopage_access(void)
 	return 0;
 }
 
-static ssize_t
-da_enable_program_show(struct device *device, struct device_attribute *attr,
-		       char *buf)
+ssize_t
+da_enable_program_show()
 {
-	int ret = mutex_trylock(&mutex);
-	if (0 == ret)
-		return -ERESTARTSYS;
+//	int ret = mutex_trylock(&mutex);
+//	if (0 == ret)
+//		return -ERESTARTSYS;
 
-	ret = sprintf(buf, "%i\n", _enable_program);
+	printf("%i\n", _enable_program);
 
-	mutex_unlock(&mutex);
-	return ret;
+//	mutex_unlock(&mutex);
+	return 0;
 }
 
-static ssize_t
-da_enable_program_store(struct device *device, struct device_attribute *attr,
-			const char *buf, size_t count)
+ssize_t
+da_enable_program_store(const char *buf, size_t count)
 {
 	int ret = -EINVAL;
 
 	debug("enable program, antes do mutex");
 
-	ret = mutex_trylock(&mutex);
-	if (0 == ret) {
-		return -ERESTARTSYS;
-	}
+//	ret = mutex_trylock(&mutex);
+//	if (0 == ret) {
+//		return -ERESTARTSYS;
+//	}
 
 	debug("enable program, depois do mutex");
 
@@ -352,19 +244,18 @@ da_enable_program_store(struct device *device, struct device_attribute *attr,
 	}
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 	return ret;
 }
 
-static ssize_t
-da_erase_all_store(struct device *device, struct device_attribute *attr,
-		   const char *buf, size_t count)
+ssize_t
+da_erase_all_store()
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
-	ret = mutex_trylock(&mutex);
-	if (0 == ret)
-		return -ERESTARTSYS;
+//	ret = mutex_trylock(&mutex);
+//	if (0 == ret)
+//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -372,34 +263,23 @@ da_erase_all_store(struct device *device, struct device_attribute *attr,
 		goto end;
 	}
 
-	if (1 > count) {
-		ret = -EINVAL;
-		goto end;
-	}
-
-	if (buf[0] != '1') {
-		ret = -EINVAL;
-		goto end;
-	}
-
 	_erase_all();
-	ret = count;
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 	return ret;
 }
 
-static ssize_t
-da_test_show(struct device *device, struct device_attribute *attr, char *buf)
+ssize_t
+da_test_show()
 {
 	uint8_t cmd;
 	uint8_t fsr;
 	int ret = 0;
 
-	ret = mutex_trylock(&mutex);
-	if (0 == ret)
-		return -ERESTARTSYS;
+//	ret = mutex_trylock(&mutex);
+//	if (0 == ret)
+//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -409,18 +289,18 @@ da_test_show(struct device *device, struct device_attribute *attr, char *buf)
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += sprintf(buf + ret, "* FSR original\n");
+	ret += printf("* FSR original\n");
 	ret +=
-	    sprintf(buf + ret, "-> FSR.RDISMB: %i\n",
+	    printf("-> FSR.RDISMB: %i\n",
 		    (fsr & FSR_RDISMB ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
+	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += sprintf(buf + ret, "-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += sprintf(buf + ret, "-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
+	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
+	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
+	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.ENDEBUG: %i\n",
+	    printf("-> FSR.ENDEBUG: %i\n",
 		    (fsr & FSR_ENDEBUG ? 1 : 0));
 
 	cmd = SPICMD_WREN;
@@ -428,18 +308,18 @@ da_test_show(struct device *device, struct device_attribute *attr, char *buf)
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += sprintf(buf + ret, "* FSR apos WREN, WEN deve ser 1\n");
+	ret += printf("* FSR apos WREN, WEN deve ser 1\n");
 	ret +=
-	    sprintf(buf + ret, "-> FSR.RDISMB: %i\n",
+	    printf("-> FSR.RDISMB: %i\n",
 		    (fsr & FSR_RDISMB ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
+	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += sprintf(buf + ret, "-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += sprintf(buf + ret, "-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
+	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
+	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
+	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.ENDEBUG: %i\n",
+	    printf("-> FSR.ENDEBUG: %i\n",
 		    (fsr & FSR_ENDEBUG ? 1 : 0));
 
 	cmd = SPICMD_WRDIS;
@@ -447,26 +327,26 @@ da_test_show(struct device *device, struct device_attribute *attr, char *buf)
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += sprintf(buf + ret, "* FSR apos WRDIS, WEN deve ser 0\n");
+	ret += printf("* FSR apos WRDIS, WEN deve ser 0\n");
 	ret +=
-	    sprintf(buf + ret, "-> FSR.RDISMB: %i\n",
+	    printf("-> FSR.RDISMB: %i\n",
 		    (fsr & FSR_RDISMB ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
+	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += sprintf(buf + ret, "-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += sprintf(buf + ret, "-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
+	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
+	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
+	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
 	ret +=
-	    sprintf(buf + ret, "-> FSR.ENDEBUG: %i\n",
+	    printf("-> FSR.ENDEBUG: %i\n",
 		    (fsr & FSR_ENDEBUG ? 1 : 0));
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 	return ret;
 }
 
-static int _write_infopage(const char *buf)
+int _write_infopage(const char *buf)
 {
 	int i;
 	const uint8_t *infopage = NULL;
@@ -499,7 +379,7 @@ static int _write_infopage(const char *buf)
 	return (error_count > 0) ? -error_count : i;
 }
 
-static int _write_nvm_normal(const char *buf)
+int _write_nvm_normal(const char *buf)
 {
 	int i;
 	const uint8_t *mem = NULL;
@@ -532,17 +412,16 @@ static int _write_nvm_normal(const char *buf)
 	return (error_count > 0) ? -error_count : i;
 }
 
-static ssize_t
-da_infopage_store(struct device *device, struct device_attribute *attr,
-		  const char *buf, size_t count)
+ssize_t
+da_infopage_store(const char *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
 
-	ret = mutex_trylock(&mutex);
-	if (0 == ret) {
-		return -ERESTARTSYS;
-	}
+//	ret = mutex_trylock(&mutex);
+//	if (0 == ret) {
+//		return -ERESTARTSYS;
+//	}
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -582,19 +461,18 @@ da_infopage_store(struct device *device, struct device_attribute *attr,
 	ret = size;
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 	return ret;
 }
 
-static ssize_t
-da_infopage_show(struct device *device, struct device_attribute *attr,
-		 char *buf)
+ssize_t
+da_infopage_show(char *buf)
 {
 	int ret;
 	int size;
 
-	if (0 == mutex_trylock(&mutex))
-		return -ERESTARTSYS;
+//	if (0 == mutex_trylock(&mutex))
+//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("fail, enable_program = 0");
@@ -622,21 +500,20 @@ da_infopage_show(struct device *device, struct device_attribute *attr,
 	ret = size;
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 
 	debug("end");
 	return ret;
 }
 
-static ssize_t
-da_nvm_normal_show(struct device *device, struct device_attribute *attr,
-		   char *buf)
+ssize_t
+da_nvm_normal_show(char* buf)
 {
 	int ret;
 	int size;
 
-	if (0 == mutex_trylock(&mutex))
-		return -ERESTARTSYS;
+//	if (0 == mutex_trylock(&mutex))
+//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("fail, enable_program = 0");
@@ -654,23 +531,22 @@ da_nvm_normal_show(struct device *device, struct device_attribute *attr,
 	ret = size;
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 
 	debug("end");
 	return ret;
 }
 
-static ssize_t
-da_nvm_normal_store(struct device *device, struct device_attribute *attr,
-		    const char *buf, size_t count)
+ssize_t
+da_nvm_normal_store(const char *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
 
-	ret = mutex_trylock(&mutex);
-	if (0 == ret) {
-		return -ERESTARTSYS;
-	}
+//	ret = mutex_trylock(&mutex);
+//	if (0 == ret) {
+//		return -ERESTARTSYS;
+//	}
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -702,112 +578,40 @@ da_nvm_normal_store(struct device *device, struct device_attribute *attr,
 	ret = size;
 
 end:
-	mutex_unlock(&mutex);
+//	mutex_unlock(&mutex);
 	return ret;
-}
-
-static int uhet_create(void)
-{
-	int ret;
-
-	debug("uhet!");
-
-	class = class_create(THIS_MODULE, NAME);
-	if (NULL == class) {
-		debug("falha em class_create()");
-		goto err_class_create;
-	}
-
-	ret = alloc_chrdev_region(&devno, 0, 1, NAME);
-	if (0 > ret) {
-		debug("falha em alloc_chrdev_region()");
-		goto err_alloc_chrdev_region;
-	}
-
-	cdev_init(&cdev, &fops);
-	cdev.owner = THIS_MODULE;
-
-	ret = cdev_add(&cdev, devno, 1);
-	if (0 > ret) {
-		debug("falha em cdev_add()");
-		goto err_cdev_add;
-	}
-
-	device = device_create(class, NULL, devno, NULL, "%s", NAME);
-	if (NULL == device) {
-		debug("falha em device_create()");
-		goto err_device_create;
-	}
-
-	ret = device_create_file(device, &dev_attr_test);
-	ret += device_create_file(device, &dev_attr_erase_all);
-	ret += device_create_file(device, &dev_attr_enable_program);
-	ret += device_create_file(device, &dev_attr_nvm_normal);
-	ret += device_create_file(device, &dev_attr_infopage);
-	if (0 != ret) {
-		debug("falha em device_create_file()");
-		goto err_device_create_file;
-	}
-
-	return 0;
-
-err_device_create_file:
-	device_destroy(class, devno);
-
-err_device_create:
-	cdev_del(&cdev);
-
-err_cdev_add:
-	unregister_chrdev_region(devno, 1);
-
-err_alloc_chrdev_region:
-	class_destroy(class);
-
-err_class_create:
-	return -EINVAL;
-
-}
-
-static void uhet_destroy(void)
-{
-	device_destroy(class, devno);
-	cdev_del(&cdev);
-	unregister_chrdev_region(devno, 1);
-	class_destroy(class);
-
-	debug("pinando!");
 }
 
 void uhet_record_init(void)
 {
-	printk(KERN_INFO "iniciando gravacao\n");
+	printf("iniciando gravacao\n");
 
-	at91_set_gpio_value(GPIO_PROG, 1);
+	wiring_set_gpio_value(GPIO_PROG, 1);
 	mdelay(10);
 
-	at91_set_gpio_value(GPIO_RESET, 0);
+	wiring_set_gpio_value(GPIO_RESET, 0);
 	udelay(5);
-	at91_set_gpio_value(GPIO_RESET, 1);
+	wiring_set_gpio_value(GPIO_RESET, 1);
 
 	mdelay(2);
 }
 
 void uhet_record_end(void)
 {
-	printk(KERN_INFO "finalizando gravacao\n");
+	printf("finalizando gravacao\n");
 
-	at91_set_gpio_value(GPIO_PROG, 0);
+	wiring_set_gpio_value(GPIO_PROG, 0);
 	mdelay(1);
 
 	// reset
-	at91_set_gpio_value(GPIO_RESET, 0);
+	wiring_set_gpio_value(GPIO_RESET, 0);
 	udelay(1);
-	at91_set_gpio_value(GPIO_RESET, 1);
+	wiring_set_gpio_value(GPIO_RESET, 1);
 
 	mdelay(10);
 }
 
-static int _toc_toc_tem_alguem_ae(void)
+int _toc_toc_tem_alguem_ae(void)
 {
 	uint8_t out[1] = { 0 };
 	uint8_t fsr_after_wren;
@@ -832,7 +636,7 @@ static int _toc_toc_tem_alguem_ae(void)
 	return -EINVAL;
 }
 
-static void _erase_all(void)
+void _erase_all(void)
 {
 	uint8_t cmd[1];
 	int ret;
@@ -849,7 +653,7 @@ static void _erase_all(void)
 	_wait_for_ready();
 }
 
-static void _erase_page(unsigned i)
+void _erase_page(unsigned i)
 {
 	uint8_t cmd[2];
 	int ret;
@@ -868,7 +672,7 @@ static void _erase_page(unsigned i)
 	_wait_for_ready();
 }
 
-static void _erase_program_pages(void)
+void _erase_program_pages(void)
 {
 	unsigned i;
 	for (i = 0; i < N_PAGES; i++) {
@@ -876,9 +680,8 @@ static void _erase_program_pages(void)
 	}
 }
 
-static ssize_t
-uhet_write(struct file *file, const char __user * buf, size_t count,
-	   loff_t * off)
+ssize_t
+uhet_write(char *buf, size_t count, unsigned long *off)
 {
 	uint8_t firmware[N_BYTES_FOR_WRITE];
 	unsigned long ret;
@@ -906,7 +709,7 @@ uhet_write(struct file *file, const char __user * buf, size_t count,
 		count = N_BYTES_FOR_WRITE;
 
 	// copiando o firmware
-	ret = copy_from_user(firmware, buf, count);
+	memcpy(firmware, buf, count);
 	if (ret != 0) {
 		debug("falha dados do usuario");
 		return -EINVAL;
@@ -942,8 +745,8 @@ uhet_write(struct file *file, const char __user * buf, size_t count,
 	return count;
 }
 
-static ssize_t
-uhet_read(struct file *file, char __user * buf, size_t count, loff_t * off)
+ssize_t
+uhet_read(char* buf, size_t count, unsigned long *off)
 {
 
 	if (0 == _enable_program) {
@@ -965,19 +768,20 @@ uhet_read(struct file *file, char __user * buf, size_t count, loff_t * off)
 	// lendo da flash
 	{
 		uint8_t cmd[3];
+		uint8_t *byte;
 		uint16_t *addr = (uint16_t *) (cmd + 1);
 		uint8_t data[N_BYTES_FOR_READ];
-		int ret;
+		int i;
 
 		cmd[0] = SPICMD_READ;
 		*addr = htons(*off);
 
 		write_then_read(cmd, 3, data, count);
-		ret = copy_to_user(buf, data, count);
-		if (0 != ret)
-			debug("problema em copiar dado p/ userspace");
-
-		*off += count;
+		memcpy(buf, data, count);
+		for(i = 0; i < count; i++) {
+			byte = (buf + i);
+			*byte = data[i];
+		}
 
 		debug
 		    ("lido addr: 0x%p, pack header: 0x%X 0x%X 0x%X, bytes lidos: %i",
@@ -989,105 +793,4 @@ uhet_read(struct file *file, char __user * buf, size_t count, loff_t * off)
 	return 0;
 }
 
-static int uhet_spi_probe(struct spi_device *spi)
-{
-	int ret = 0;
-
-	uhet_spi_device = spi;
-	spi->max_speed_hz = NRF_SPI_SPEED_HZ;
-
-	ret = spi_setup(spi);
-	if (0 != ret)
-		debug("falha em reconfigurar velocidade da spi");
-
-	debug("probando la vida loka!");
-
-	ret = uhet_create();
-	if (0 > ret) {
-		debug("falha em criar device :/");
-		return -EINVAL;
-	}
-
-	/* opa, se conseguimos pegar a spi, ja mando ver nos gpios :) */
-	ret += at91_set_GPIO_periph(GPIO_PROG, 0);
-	ret += at91_set_GPIO_periph(GPIO_RESET, 1);
-	if (0 > ret) {
-		debug("falha em setar pinos para GPIO");
-		return -EINVAL;
-	}
-
-	ret += gpio_request(GPIO_PROG, NAME);
-	ret += gpio_request(GPIO_RESET, NAME);
-	if (0 > ret) {
-		debug("falha em request de GPIOs");
-		return -EINVAL;
-	}
-
-	ret += gpio_direction_output(GPIO_PROG, 0);
-	ret += gpio_direction_output(GPIO_RESET, 1);
-	if (0 > ret) {
-		debug("falha em setar direcao de GPIOs");
-		return -EINVAL;
-	}
-
-	debug("GPIOs configurados com sucesso \\o/");
-	return 0;
-}
-
-static int uhet_spi_remove(struct spi_device *spi)
-{
-	debug("tchau tchau mundo cruel");
-	uhet_destroy();
-
-	gpio_free(GPIO_RESET);
-	gpio_free(GPIO_PROG);
-	debug("GPIOs liberados!")
-
-	    device_remove_file(device, &dev_attr_erase_all);
-	device_remove_file(device, &dev_attr_nvm_normal);
-	device_remove_file(device, &dev_attr_infopage);
-	device_remove_file(device, &dev_attr_enable_program);
-	device_remove_file(device, &dev_attr_test);
-
-	return 0;
-}
-
-static int uhet_open(struct inode *inode, struct file *file)
-{
-	int ret = mutex_trylock(&mutex);
-	if (0 == ret) {
-		return -ERESTARTSYS;
-	}
-	debug("open");
-
-	return 0;
-}
-
-static int uhet_release(struct inode *inode, struct file *file)
-{
-	mutex_unlock(&mutex);
-	debug("release");
-
-	return 0;
-}
-
-static int __init uhet_init(void)
-{
-	int ret = spi_register_driver(&uhet_spi_driver);
-	debug("vida loka \\o/");
-	return ret;
-}
-
-static void __exit uhet_exit(void)
-{
-	spi_unregister_driver(&uhet_spi_driver);
-	return;
-}
-
-module_init(uhet_init);
-module_exit(uhet_exit);
-
-MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Eder Ruiz Maria <erm@uhet.sh>");
-MODULE_VERSION("0.0.1");
-MODULE_DESCRIPTION("nrf24le1 flash access driver");
+#endif
