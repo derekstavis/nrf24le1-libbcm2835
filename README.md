@@ -7,7 +7,7 @@ RaspberryPi over wiringPi library.
 - Load the spi driver prior to using this tool. Try `gpio load spi`
 - In some cases this tool must be run as superuser 
 
-# Doc
+## Doc
 
 * For documentacion about nrf24le1 look nordic oficial web site:
 <http://www.nordicsemi.com/eng/Products/2.4GHz-RF/nRF24LE1>

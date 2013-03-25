@@ -15,11 +15,6 @@ void _erase_program_pages(void);
 
 int _enable_program = 0;
 
-#define debug(fmt, args...) \
-{ \
-	printf("[" NAME "] %s: " fmt "\n", __func__, ##args); \
-}
-
 #define write_then_read(out,n_out,in,n_in) \
 ({ \
 	int __ret = 0; \
@@ -36,6 +31,12 @@ void enable_program(uint8_t state)
 {
 	wiring_set_gpio_value(GPIO_PROG, state);	
 	_enable_program = state;
+}
+
+void nrf24le1_init()
+{
+	debug("Inicializando nRF24LE1\n");
+	wiring_init(NRF_SPI_SPEED_HZ);
 }
 
 void _wait_for_ready(void)

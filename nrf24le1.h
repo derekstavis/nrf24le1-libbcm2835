@@ -42,10 +42,17 @@
 #define N_BYTES_FOR_READ  (16)
 #define NRF_SPI_SPEED_HZ  (4500 * 1000) /* 4.5Mhz */
 
-#define GPIO_PROG		5 // wiringPi or GPIO 24 in BCM
-#define GPIO_RESET		6 // wiringPi or GPIO 25 in BCM 
+#define GPIO_PROG		WIRING_NRF_PROG_PIN // wiringPi or GPIO 24 in BCM
+#define GPIO_RESET		WIRING_NRF_RESET_PIN // wiringPi or GPIO 25 in BCM 
+
+#define debug(fmt, args...) \
+{ \
+	printf("[" NAME "] %s: " fmt "\n", __func__, ##args); \
+}
 
 /* Public Interfaces */
+
+void nrf24le1_init();
 
 void enable_program(uint8_t);
 

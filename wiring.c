@@ -1,21 +1,8 @@
 #include "wiring.h"
-
-/* SPI Channel and Speed Config */
-#define SPI_CHANNEL 	0
-#define SPI_SPEED		2000000
-
-/* RaspberryPi Pinout Config */
-#define SPI_MOSI_PIN	12
-#define SPI_MISO_PIN	13
-#define SPI_CLK_PIN		14
-#define SPI_CS0_PIN		10
-
-/* nrf24LE1 required signals */
-#define NRF_PROG_PIN	5
-#define NRF_RESET_PIN	6
+#include <string.h>
 
 void
-wiring_init() 
+wiring_init(unsigned spi_speed) 
 {
 
 	if (wiringPiSetup() < 0) {
@@ -23,12 +10,12 @@ wiring_init()
 		exit(errno);
 	}
 
-	if (wiringPiSPISetup (SPI_CHANNEL, SPI_SPEED) < 0) {
+	if (wiringPiSPISetup (WIRING_SPI_CHANNEL, spi_speed) < 0) {
   		printf ("SPI Setup failed\n");
   		exit(errno);
   	} else {
-  		pinMode(NRF_PROG_PIN, OUTPUT);
-  		pinMode(NRF_RESET_PIN, OUTPUT);
+  		pinMode(WIRING_NRF_PROG_PIN, OUTPUT);
+  		pinMode(WIRING_NRF_RESET_PIN, OUTPUT);
   	}
 
 }
@@ -37,9 +24,24 @@ uint8_t
 wiring_write_then_read(uint8_t* in, uint8_t in_len, 
 	                   uint8_t* out, uint8_t out_len)
 {
-	wiringPiSPIDataRW(in, in_len);
+	uint8_t out_buf[out_len];
+	uint8_t in_buf[in_len];
+	unsigned int ret = 0;
+	
+	if (NULL != out) {
+		memcpy(out_buf, out, out_len);
+		wiringPiSPIDataRW(WIRING_SPI_CHANNEL, out_buf, out_len);
+		ret += out_len;
+	}
 
-	return 0;
+
+	if (NULL != in) {
+		memcpy(in_buf, in, in_len);		
+		wiringPiSPIDataRW(WIRING_SPI_CHANNEL, in_buf, in_len);
+		ret += in_len;
+	}
+
+	return ret;
 }
 
 void

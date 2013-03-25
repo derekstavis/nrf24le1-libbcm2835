@@ -7,11 +7,8 @@
 #include "nrf24le1.h"
 
 int main(void) {
-	uint8_t buffer[] = {0xFF, 0xFF};
-
-	printf("Inicializando wiringPi\n");
-
-	wiring_init();
+	
+	nrf24le1_init();
 
 	enable_program(1);
 
