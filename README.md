@@ -4,8 +4,7 @@ RaspberryPi over wiringPi library.
 
 ## Requirements
 - You must be using Raspbian with wiringPi library installed.
-- Load the spi driver prior to using this tool
-    gpio load spi
+- Load the spi driver prior to using this tool. Try `gpio load spi`
 - In some cases this tool must be run as superuser 
 
 # Doc
