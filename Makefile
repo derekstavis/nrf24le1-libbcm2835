@@ -1,28 +1,26 @@
-# cc -o main main.c -I/usr/local/include -L/usr/local/lib -lwiringPi
+PROJECT_NAME 	= nrf24le1
+PROJECT_PATH	= $(pwd)
 
 #DEBUG	= -g -O0
 DEBUG	= -O3
-CC	= gcc
+CC	    = gcc
 INCLUDE	= -I/usr/local/include -I.
 #CFLAGS	= $(DEBUG) -Wall $(INCLUDE) -Winline -pipe
 
 LDFLAGS	= -L/usr/local/lib
-LIBS    = -lwiringPi
+LIBS    = -l bcm2835 -l rt
 
-SRC	=	main.c wiring.c nrf24le1.c
-OBJ	=	main.o
-BINS	=	main
+SRC	    = main.c wiring.c nrf24le1.c
+OBJ	    = main.o
+BINS	= main
+
+BIN_PATH 	= bin
+OBJ_PATH  	= obj
+DIST_PATH 	= dist
 
 main:	
 	@echo [CC]
-	$(CC) -o $@ $(SRC) $(INCLUDE) $(LDFLAGS) $(LIBS)
+	$(CC) -o $(BIN_PATH)/$(PROJECT_NAME) $(SRC) $(INCLUDE) $(LDFLAGS) $(LIBS)
 
 clean:
-	rm -f $(OBJ) *~ $(BINS)
-
-tags:	$(SRC)
-	@echo [ctags]
-	@ctags $(SRC)
-
-depend:
-	makedepend -Y $(SRC)
+	rm -f $(OBJ_PATH)/* $(BIN_PATH)/*

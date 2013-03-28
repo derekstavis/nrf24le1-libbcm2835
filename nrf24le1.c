@@ -36,7 +36,7 @@ void enable_program(uint8_t state)
 void nrf24le1_init()
 {
 	debug("Inicializando nRF24LE1\n");
-	wiring_init(NRF_SPI_SPEED_HZ);
+	wiring_init();
 }
 
 void _wait_for_ready(void)
@@ -191,55 +191,46 @@ da_enable_program_show()
 }
 
 ssize_t
-da_enable_program_store(const char *buf, size_t count)
+da_enable_program_store(uint8_t state)
 {
-	int ret = -EINVAL;
+	int ret = 0;
 
-	debug("enable program, antes do mutex");
+//	debug("enable program, antes do mutex");
 
 //	ret = mutex_trylock(&mutex);
 //	if (0 == ret) {
 //		return -ERESTARTSYS;
 //	}
 
-	debug("enable program, depois do mutex");
+//	debug("enable program, depois do mutex");
 
-	if (1 > count) {
+	if (state != 0 && state != 1) {
 		ret = -EINVAL;
 		goto end;
 	}
 
-	if (buf[0] != '0' && buf[0] != '1') {
-		ret = -EINVAL;
-		goto end;
-	}
+	switch (state) {
 
-	switch (buf[0]) {
-
-	case '0':
+	case 0:
 		switch (_enable_program) {
 		case 0:
-			ret = count;
 			goto end;
 
 		case 1:
 			_enable_program = 0;
 			uhet_record_end();
-			ret = count;
-			goto end;;
+			goto end;
 		}
 
-	case '1':
+	case 1:
 		switch (_enable_program) {
 		case 1:
-			ret = count;
 			goto end;
 
 		case 0:
 			_enable_program = 1;
 			uhet_record_init();
 			_wait_for_ready();
-			ret = count;
 			goto end;
 		}
 	}

@@ -66,5 +66,5 @@ ssize_t da_enable_program_show(void);
 
 ssize_t da_infopage_store(const char *, size_t);
 ssize_t da_nvm_normal_store(const char *, size_t);
-ssize_t da_enable_program_store(const char *, size_t);
+ssize_t da_enable_program_store(uint8_t state);
 ssize_t da_erase_all_store();

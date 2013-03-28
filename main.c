@@ -1,4 +1,4 @@
-#include <wiring.h>
+//#include <wiring.h>
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -15,6 +15,8 @@ int main(void) {
 	da_test_show();
 
 	enable_program(0);
+
+	wiring_destroy();
 	
   	return 0;
 }

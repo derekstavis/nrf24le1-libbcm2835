@@ -1,32 +1,23 @@
 #ifndef __WIRING_H__
 #define __WIRING_H__
 
-#include <wiringPi.h>
+#include <bcm2835.h>
 
 #include <errno.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
 
-/* SPI Channel and Speed Config */
-#define WIRING_SPI_CHANNEL 		0
-
-/* RaspberryPi Pinout Config */
-#define WIRING_SPI_MOSI_PIN		12
-#define WIRING_SPI_MISO_PIN		13
-#define WIRING_SPI_CLK_PIN		14
-#define WIRING_SPI_CS0_PIN		10
-
 /* nrf24LE1 required signals */
-#define WIRING_NRF_PROG_PIN		5
-#define WIRING_NRF_RESET_PIN	6
+#define WIRING_NRF_PROG_PIN		24
+#define WIRING_NRF_RESET_PIN	25
 
 /* Macros for sleep happiness */
-#define udelay(us)		delayMicroseconds(us)
-#define mdelay(ms)		delayMicroseconds(ms*1000)
+#define udelay(us)		bcm2835_delayMicroseconds(us)
+#define mdelay(ms)		bcm2835_delayMicroseconds(ms*1000)
 
 /* Wiring functions for bootstraping SPI */
-void wiring_init(unsigned);
+void wiring_init();
 
 /* Full-duplex read and write function */
 uint8_t wiring_write_then_read(uint8_t* in, 
