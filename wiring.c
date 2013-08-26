@@ -28,20 +28,23 @@ uint8_t
 wiring_write_then_read(uint8_t* in, uint8_t in_len, 
 	                   uint8_t* out, uint8_t out_len)
 {
-	uint8_t out_buf[out_len];
+	uint8_t transfer_buf[out_len + in_len];
 	unsigned int ret = 0;
+
+	memset(transfer_buf, 0, out_len + in_len);
 	
 	if (NULL != out) {
-		memcpy(out_buf, out, out_len);
-		bcm2835_spi_transfern(out_buf, out_len);
+		memcpy(transfer_buf, out, out_len);
 		ret += out_len;
 	}
 
 	if (NULL != in) {
-		memset(in, 0x00, in_len);
-		bcm2835_spi_transfern(in, in_len);
 		ret += in_len;
 	}
+
+	bcm2835_spi_transfern(transfer_buf, ret);
+
+	memcpy(in, &transfer_buf[out_len], in_len);
 
 	return ret;
 }
