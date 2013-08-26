@@ -10,13 +10,42 @@ linux device driver.
 - In some cases this tool must be run as superuser 
 
 ## Roadmap
-- Pass `da_test_show` test.
+- Pass `da_test_show` test: __ok?__
 - Implement more extensive tests
 
 ## Features (in a distant future)
 - Program memory read/write
 - NVM memory read/write
 - InfoPage handling
+
+## Command Line Format
+
+For further development, the tool should conform to the above protocol.
+
+### Reading data from nRF24LE1
+
+`nrf24le1 read infopage`
+
+`nrf24le1 read firmware`
+
+`nrf24le1 read nvm`
+
+All read oprations dump data to stdout.
+
+### Writing data to nRF24LE1
+
+`nrf24le1 write firmware blink.img`
+
+`nrf24le1 write infopage infopage.img`
+
+`nrf24le1 write nvm memory.img`
+
+### Additional Parameters:
+
+| Parameter          | Function                      |
+| ------------------ | ----------------------------- |
+| `--offset N_BYTES` | Skips N_BYTES bytes           |
+| `--count N_BYTES`  | Read/Write only N_BYTES bytes |
 
 # References
 
