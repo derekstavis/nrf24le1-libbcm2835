@@ -20,10 +20,10 @@
 void wiring_init();
 
 /* Full-duplex read and write function */
-uint8_t wiring_write_then_read(uint8_t* in, 
-	                           uint8_t in_len, 
-	                   		   uint8_t* out, 
-	                   		   uint8_t out_len);
+uint8_t wiring_write_then_read(uint8_t* out, 
+	                           uint8_t out_len, 
+	                   		   uint8_t* in, 
+	                   		   uint8_t in_len);
 
 /* Function for setting gpio values */
 void wiring_set_gpio_value(uint8_t pin, uint8_t state);
