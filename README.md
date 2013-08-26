@@ -1,4 +1,4 @@
-# wiring-nrf24le1
+# nrf24le1-libbcm2835
 A simple command-line interface with Nordic nRF24LE1 using 
 RaspberryPi over bcm2835 library.
 
@@ -6,8 +6,7 @@ This tool is mostly a userpace port of @holoturoide's nrf24le1
 linux device driver.
 
 ## Requirements
-- You must be using Raspbian with wiringPi library installed.
-- Load the spi driver prior to using this tool. Try `gpio load spi`
+- You must be using Raspbian with `bcm2835` and `rt` libraries installed.
 - In some cases this tool must be run as superuser 
 
 ## Roadmap
