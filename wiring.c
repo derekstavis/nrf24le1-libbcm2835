@@ -25,8 +25,8 @@ wiring_init()
 }
 
 uint8_t
-wiring_write_then_read(uint8_t* out, uint8_t out_len, 
-	               uint8_t* in, uint8_t in_len)
+wiring_write_then_read(uint8_t* out, uint16_t out_len, 
+	               uint8_t* in, uint16_t in_len)
 {
 	uint8_t transfer_buf[out_len + in_len];
 	unsigned int ret = 0;
