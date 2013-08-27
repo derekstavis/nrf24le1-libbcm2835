@@ -282,18 +282,12 @@ da_test_show()
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
 	ret += printf("* FSR original\n");
-	ret +=
-	    printf("-> FSR.RDISMB: %i\n",
-		    (fsr & FSR_RDISMB ? 1 : 0));
-	ret +=
-	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
-	ret +=
-	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
-	ret +=
-	    printf("-> FSR.ENDEBUG: %i\n",
-		    (fsr & FSR_ENDEBUG ? 1 : 0));
+	ret += printf("-> FSR.RDISMB: %i\n",  (fsr & FSR_RDISMB ? 1 : 0));
+	ret += printf("-> FSR.INFEN: %i\n",   (fsr & FSR_INFEN ? 1 : 0));
+	ret += printf("-> FSR.RDYN: %i\n",    (fsr & FSR_RDYN ? 1 : 0));
+	ret += printf("-> FSR.WEN: %i\n",     (fsr & FSR_WEN ? 1 : 0));
+	ret += printf("-> FSR.STP: %i\n",     (fsr & FSR_STP ? 1 : 0));
+	ret += printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
 
 	cmd = SPICMD_WREN;
 	write_then_read(&cmd, 1, NULL, 0);
@@ -301,18 +295,12 @@ da_test_show()
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
 	ret += printf("* FSR apos WREN, WEN deve ser 1\n");
-	ret +=
-	    printf("-> FSR.RDISMB: %i\n",
-		    (fsr & FSR_RDISMB ? 1 : 0));
-	ret +=
-	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
-	ret +=
-	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
+	ret += printf("-> FSR.RDISMB: %i\n", (fsr & FSR_RDISMB ? 1 : 0));
+	ret += printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
+	ret += printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
 	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
 	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
-	ret +=
-	    printf("-> FSR.ENDEBUG: %i\n",
-		    (fsr & FSR_ENDEBUG ? 1 : 0));
+	ret += printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
 
 	cmd = SPICMD_WRDIS;
 	write_then_read(&cmd, 1, NULL, 0);
@@ -645,21 +633,40 @@ void _erase_all(void)
 	_wait_for_ready();
 }
 
+
+uint8_t __enable_wren(void)
+{
+        uint8_t cmd, fsr;
+
+	cmd = SPICMD_WREN;
+	write_then_read(&cmd, 1, NULL, 0);
+
+	cmd = SPICMD_RDSR;
+	write_then_read(&cmd, 1, &fsr, 1);
+
+	if((fsr & FSR_WEN ? 1 : 0) == 0)
+	{
+		printf("Escrita nao pode ser habilitada -> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
+		return 0;
+	}
+
+	return 1;
+}
+
 void _erase_page(unsigned i)
 {
 	uint8_t cmd[2];
 	int ret;
 
-	cmd[0] = SPICMD_WREN;
-	write_then_read(cmd, 1, NULL, 0);
+	if(!__enable_wren()) return;
+
 	_wait_for_ready();
 
 	cmd[0] = SPICMD_ERASEPAGE;
 	cmd[1] = i;
 	ret = write_then_read(cmd, 2, NULL, 0);
-	if (0 == ret) {
-		debug("apagando a pagina: %i", i);
-	}
+
+	if (0 == ret) printf("apagando a pagina: %i\n", i);
 
 	_wait_for_ready();
 }
@@ -667,43 +674,22 @@ void _erase_page(unsigned i)
 void _erase_program_pages(void)
 {
 	unsigned i;
+
+
 	for (i = 0; i < N_PAGES; i++) {
 		_erase_page(i);
 	}
 }
 
-ssize_t
-uhet_write(char *buf, size_t count, unsigned long *off)
+ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
 {
-	uint8_t firmware[N_BYTES_FOR_WRITE];
 	unsigned long ret;
-	uint8_t cmd[3 + N_BYTES_FOR_WRITE];
-	uint16_t *addr = (uint16_t *) (cmd + 1);
+	uint8_t cmd[3 + count];
+	uint8_t  i =0, k = 0;
+	uint16_t addr = 0;
 
 	if (0 == _enable_program) {
 		debug("tentando gravar sendo que enable_pragram = 0");
-		return -EINVAL;
-	}
-
-	debug("tamanho do firmware escrito: %i", count);
-
-	if (*off > MAX_FIRMWARE_SIZE) {
-		debug("firmware(%i) maior que MAX_FIRMWARE_SIZE(%i)",
-		      count, MAX_FIRMWARE_SIZE);
-		return -EINVAL;
-	}
-	// escrevendo apenas o q cabe na flash
-	if (*off + count > MAX_FIRMWARE_SIZE)
-		count = MAX_FIRMWARE_SIZE - *off;
-
-	// se maior q o q posso tranmitir
-	if (count > N_BYTES_FOR_WRITE)
-		count = N_BYTES_FOR_WRITE;
-
-	// copiando o firmware
-	memcpy(firmware, buf, count);
-	if (ret != 0) {
-		debug("falha dados do usuario");
 		return -EINVAL;
 	}
 
@@ -713,27 +699,29 @@ uhet_write(char *buf, size_t count, unsigned long *off)
 		return -EINVAL;
 	}
 
-	if (0 == *off)
-		_erase_program_pages();
-
-	cmd[0] = SPICMD_WREN;
-	write_then_read(cmd, 1, NULL, 0);
-	if (0 > ret)
-		debug("falha em SPICMD_WREN");
+	_erase_program_pages(); /* apaga primeiro */
 
 	_wait_for_ready();
 
-	cmd[0] = SPICMD_PROGRAM;
-	*addr = htons(*off);
+	for(i = 0; i < 32; i++)
+	{
+		cmd[0] = SPICMD_PROGRAM;
+		cmd[2] = (uint8_t)(addr & 0x00ff);
+		cmd[1] = (uint8_t)((addr & 0xff00) >> 8);
 
-	memcpy(cmd + 3, firmware, count);
-	ret = write_then_read(cmd, 3 + count, NULL, 0);
-	if (0 == ret)
-		debug("escrevendo no endereco, 0x%X", *addr);
 
-	_wait_for_ready();
+		printf("ADDR: %02X %02X\n",((addr & 0xff00) >> 8), (addr & 0x00ff));
+		memcpy(cmd + 3, &buf[addr], 512);
 
-	*off += count;
+		if(!__enable_wren()) return;
+
+		printf("b0:%02X    b1:%02X   b2: %02X\n",cmd[0], cmd[2], cmd[1]);
+		write_then_read(cmd, 3 + 512, NULL, 0);
+
+		addr = addr + 512; /* Atualizando o endereco */
+		_wait_for_ready();
+	}
+
 	return count;
 }
 
@@ -745,35 +733,21 @@ uhet_read(char* buf, size_t count, unsigned long *off)
 		debug("falha, enable_program = 0");
 		return -EINVAL;
 	}
-	// cabo a parada
-	if (*off >= MAX_FIRMWARE_SIZE)
-		return 0;
 
-	// se passar do tamanho do firmware
-	if (*off + count > MAX_FIRMWARE_SIZE)
-		count = MAX_FIRMWARE_SIZE - *off;
-
-	// limitando o tamanho da leitura
-	if (count > N_BYTES_FOR_READ)
-		count = N_BYTES_FOR_READ;
-
+	printf("Quantidade de dados a ser lido: %i   %d\n", count, MAX_FIRMWARE_SIZE);
 	// lendo da flash
 	{
 		uint8_t cmd[3];
 		uint8_t *byte;
 		uint16_t *addr = (uint16_t *) (cmd + 1);
-		uint8_t data[N_BYTES_FOR_READ];
+		//uint8_t data[count];
 		int i;
 
 		cmd[0] = SPICMD_READ;
-		*addr = htons(*off);
+		cmd[1] = 0;
+		cmd[2] = 0;
 
-		write_then_read(cmd, 3, data, count);
-		memcpy(buf, data, count);
-		for(i = 0; i < count; i++) {
-			byte = (buf + i);
-			*byte = data[i];
-		}
+		write_then_read(cmd, 3, buf, count);
 
 		debug
 		    ("lido addr: 0x%p, pack header: 0x%X 0x%X 0x%X, bytes lidos: %i",
