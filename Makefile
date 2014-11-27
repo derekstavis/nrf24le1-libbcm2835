@@ -4,7 +4,7 @@ PROJECT_PATH	= $(pwd)
 CC	    = gcc
 INCLUDE	= -I/usr/local/include -I.
 include Makefile.dev
-CFLAGS	= -Wall $(INCLUDE) -Winline -pipe $(CFLAGSDEV) 
+CFLAGS	= -O3 -Wall $(INCLUDE) -Winline -pipe $(CFLAGSDEV)
 
 LDFLAGS	= -L/usr/local/lib
 LIBS    = -l bcm2835 -l rt
