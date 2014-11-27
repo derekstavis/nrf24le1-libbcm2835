@@ -55,8 +55,6 @@
 void nrf24le1_init(void);
 void nrf24le1_cleanup(void);
 
-void enable_program(uint8_t);
-
 ssize_t uhet_read(uint8_t* buf, size_t count, unsigned long *off);
 ssize_t uhet_write(uint8_t* buf, size_t count, unsigned long *off);
 

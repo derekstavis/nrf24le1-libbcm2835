@@ -29,12 +29,6 @@ int _enable_program = 0;
 	__ret; \
 })
 
-void enable_program(uint8_t state)
-{
-	wiring_set_gpio_value(GPIO_PROG, state);	
-	_enable_program = state;
-}
-
 void nrf24le1_init()
 {
 	debug("Inicializando nRF24LE1\n");

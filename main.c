@@ -42,9 +42,10 @@ int main(void)
 
 	nrf24le1_init();
 
-	enable_program(1);
+	da_enable_program_store(1);
 
-	//da_test_show();
+	da_test_show();
+
 #if 1
 	nrf_restore_data(bufread, count, "./firmw/blink.img");
 	uhet_write(bufread, 16384, &off);
@@ -60,7 +61,7 @@ int main(void)
 
 	//da_erase_all_store();
 
-	enable_program(0);
+	da_enable_program_store(0);
 
 	nrf24le1_cleanup();
 	
