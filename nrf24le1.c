@@ -181,13 +181,7 @@ int _disable_infopage_access(void)
 ssize_t
 da_enable_program_show()
 {
-//	int ret = mutex_trylock(&mutex);
-//	if (0 == ret)
-//		return -ERESTARTSYS;
-
 	printf("%i\n", _enable_program);
-
-//	mutex_unlock(&mutex);
 	return 0;
 }
 
@@ -195,15 +189,6 @@ ssize_t
 da_enable_program_store(uint8_t state)
 {
 	int ret = 0;
-
-//	debug("enable program, antes do mutex");
-
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret) {
-//		return -ERESTARTSYS;
-//	}
-
-//	debug("enable program, depois do mutex");
 
 	if (state != 0 && state != 1) {
 		ret = -EINVAL;
@@ -237,7 +222,6 @@ da_enable_program_store(uint8_t state)
 	}
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
@@ -245,10 +229,6 @@ ssize_t
 da_erase_all_store()
 {
 	int ret = 0;
-
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret)
-//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -259,7 +239,6 @@ da_erase_all_store()
 	_erase_all();
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
@@ -269,10 +248,6 @@ da_test_show()
 	uint8_t cmd;
 	uint8_t fsr;
 	int ret = 0;
-
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret)
-//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -323,7 +298,6 @@ da_test_show()
 		    (fsr & FSR_ENDEBUG ? 1 : 0));
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
@@ -399,11 +373,6 @@ da_infopage_store(const uint8_t *buf, size_t count)
 	int ret = 0;
 	int size = -1;
 
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret) {
-//		return -ERESTARTSYS;
-//	}
-
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
 		ret = -EINVAL;
@@ -442,7 +411,6 @@ da_infopage_store(const uint8_t *buf, size_t count)
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
@@ -451,9 +419,6 @@ da_infopage_show(uint8_t *buf)
 {
 	int ret;
 	int size;
-
-//	if (0 == mutex_trylock(&mutex))
-//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("fail, enable_program = 0");
@@ -481,8 +446,6 @@ da_infopage_show(uint8_t *buf)
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
-
 	debug("end");
 	return ret;
 }
@@ -492,9 +455,6 @@ da_nvm_normal_show(uint8_t* buf)
 {
 	int ret;
 	int size;
-
-//	if (0 == mutex_trylock(&mutex))
-//		return -ERESTARTSYS;
 
 	if (0 == _enable_program) {
 		debug("fail, enable_program = 0");
@@ -512,8 +472,6 @@ da_nvm_normal_show(uint8_t* buf)
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
-
 	debug("end");
 	return ret;
 }
@@ -523,11 +481,6 @@ da_nvm_normal_store(const uint8_t *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
-
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret) {
-//		return -ERESTARTSYS;
-//	}
 
 	if (0 == _enable_program) {
 		debug("falha, enable_program = 0");
@@ -559,7 +512,6 @@ da_nvm_normal_store(const uint8_t *buf, size_t count)
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
