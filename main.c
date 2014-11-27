@@ -9,6 +9,31 @@
 
 #include "nrf24le1.h"
 
+typedef enum {
+	CMD_UNKNOWN,
+	CMD_SHOW,
+	CMD_READ,
+	CMD_WRITE,
+} cmd_e;
+
+static int usage(void)
+{
+	fprintf(stderr, "Usage: nrf24le1 [show|read|write]\n");
+	return 1;
+}
+
+static cmd_e arg_to_cmd(const char *arg)
+{
+	if (strcmp(arg, "show") == 0)
+		return CMD_SHOW;
+	else if (strcmp(arg, "read") == 0)
+		return CMD_READ;
+	else if (strcmp(arg, "write") == 0)
+		return CMD_WRITE;
+	else
+		return CMD_UNKNOWN;
+}
+
 static void nrf_save_data(uint8_t * buf, uint16_t count, char * fname)
 {
 	size_t size_writed = 0, idx = 0;
@@ -32,11 +57,17 @@ static void nrf_restore_data(uint8_t * buf, uint16_t count, char * fname)
 	fclose(fd);
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
 	uint8_t bufread[17000];
 	unsigned long off = 0;
 	size_t count =16384;
+	cmd_e cmd;
+
+	if (argc < 2) {
+		return usage();
+	}
+	cmd = arg_to_cmd(argv[1]);
 
 	memset(bufread, 0, sizeof(bufread));
 
@@ -44,20 +75,23 @@ int main(void)
 
 	da_enable_program_store(1);
 
-	da_test_show();
+	switch (cmd) {
+	case CMD_SHOW: da_test_show(); break;
+	case CMD_WRITE:
+		nrf_restore_data(bufread, count, "./firmw/blink.img");
+		uhet_write(bufread, 16384, &off);
+		nrf_save_data(bufread, count, "./firmw/blink-dump.img");
+		break;
 
-#if 1
-	nrf_restore_data(bufread, count, "./firmw/blink.img");
-	uhet_write(bufread, 16384, &off);
-	nrf_save_data(bufread, count, "./firmw/blink-dump.img");
-#endif
-
-#if 1
-	memset(bufread, 0, sizeof(bufread));
-	uhet_read(bufread, count, &off);
-
-	nrf_save_data(bufread, count, "./blink-dump2.img");
-#endif
+	case CMD_READ:
+		memset(bufread, 0, sizeof(bufread));
+		uhet_read(bufread, count, &off);
+		nrf_save_data(bufread, count, "./blink-dump2.img");
+		break;
+	
+	default:
+		break;
+	}
 
 	//da_erase_all_store();
 
