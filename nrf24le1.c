@@ -1,6 +1,3 @@
-#ifndef __NRF24LE1_H__
-#define __NRF24LE1_H__
-
 #include "nrf24le1.h"
 #include "wiring.h"
 
@@ -710,5 +707,3 @@ uhet_read(uint8_t* buf, size_t count, unsigned long *off)
 
 	return 0;
 }
-
-#endif

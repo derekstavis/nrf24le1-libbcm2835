@@ -1,3 +1,6 @@
+#ifndef __NRF24LE1_H__
+#define __NRF24LE1_H__
+
 #include <errno.h>
 #include <string.h>
 
@@ -67,3 +70,5 @@ ssize_t da_infopage_store(const uint8_t *, size_t);
 ssize_t da_nvm_normal_store(const uint8_t *, size_t);
 ssize_t da_enable_program_store(uint8_t state);
 ssize_t da_erase_all_store();
+
+#endif
