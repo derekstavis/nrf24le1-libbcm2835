@@ -52,19 +52,20 @@
 
 /* Public Interfaces */
 
-void nrf24le1_init();
+void nrf24le1_init(void);
+void nrf24le1_cleanup(void);
 
 void enable_program(uint8_t);
 
-ssize_t uhet_read(char* buf, size_t count, unsigned long *off);
-ssize_t uhet_write(char* buf, size_t count, unsigned long *off);
+ssize_t uhet_read(uint8_t* buf, size_t count, unsigned long *off);
+ssize_t uhet_write(uint8_t* buf, size_t count, unsigned long *off);
 
 ssize_t da_test_show(void);
-ssize_t da_infopage_show(char *buf);
-ssize_t da_nvm_normal_show(char* buf);
+ssize_t da_infopage_show(uint8_t * buf);
+ssize_t da_nvm_normal_show(uint8_t * buf);
 ssize_t da_enable_program_show(void);
 
-ssize_t da_infopage_store(const char *, size_t);
-ssize_t da_nvm_normal_store(const char *, size_t);
+ssize_t da_infopage_store(const uint8_t *, size_t);
+ssize_t da_nvm_normal_store(const uint8_t *, size_t);
 ssize_t da_enable_program_store(uint8_t state);
 ssize_t da_erase_all_store();

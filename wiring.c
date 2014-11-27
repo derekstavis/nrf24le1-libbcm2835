@@ -42,7 +42,7 @@ wiring_write_then_read(uint8_t* out, uint16_t out_len,
 		ret += in_len;
 	}
 
-	bcm2835_spi_transfern(transfer_buf, ret);
+	bcm2835_spi_transfern((char*)transfer_buf, ret);
 
 	memcpy(in, &transfer_buf[out_len], in_len);
 
@@ -56,7 +56,7 @@ wiring_set_gpio_value(uint8_t pin, uint8_t state)
 }
 
 void
-wiring_destroy()
+wiring_destroy(void)
 {
 	bcm2835_spi_end();
 }

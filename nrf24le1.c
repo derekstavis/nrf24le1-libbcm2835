@@ -4,6 +4,8 @@
 #include "nrf24le1.h"
 #include "wiring.h"
 
+#include <endian.h>
+
 #define NAME "nrf24le1"
 
 void uhet_record_init(void);
@@ -37,6 +39,11 @@ void nrf24le1_init()
 {
 	debug("Inicializando nRF24LE1\n");
 	wiring_init();
+}
+
+void nrf24le1_cleanup(void)
+{
+	wiring_destroy();
 }
 
 void _wait_for_ready(void)
@@ -89,7 +96,7 @@ int _enable_infopage_access(void)
 	return 0;
 }
 
-int _read_infopage(char *buf)
+int _read_infopage(uint8_t *buf)
 {
 	int i;
 	int ret = 0;
@@ -98,12 +105,12 @@ int _read_infopage(char *buf)
 	uint8_t in[N_BYTES_FOR_READ];
 
 	uint16_t *addr = (uint16_t *) (cmd + 1);
-	char *p = buf;
+	uint8_t *p = buf;
 
 	cmd[0] = SPICMD_READ;
 	for (i = 0; i < NRF_PAGE_SIZE; i += N_BYTES_FOR_READ) {
 
-		*addr = htons(i);
+		*addr = htole16(i);
 		ret = write_then_read(cmd, 3, in, N_BYTES_FOR_READ);
 		if (0 != ret)
 			return ret;
@@ -118,7 +125,7 @@ int _read_infopage(char *buf)
 	return p - buf;		// numero de bytes lidos;
 }
 
-int _read_nvm_normal(char *buf)
+int _read_nvm_normal(uint8_t *buf)
 {
 	int i;
 	int ret = 0;
@@ -127,12 +134,12 @@ int _read_nvm_normal(char *buf)
 	uint8_t in[N_BYTES_FOR_READ];
 
 	uint16_t *addr = (uint16_t *) (cmd + 1);
-	char *p = buf;
+	uint8_t *p = buf;
 
 	cmd[0] = SPICMD_READ;
 	for (i = 0; i < NVM_NORMAL_MEM_SIZE; i += N_BYTES_FOR_READ) {
 
-		*addr = htons(i + NVM_NORMAL_PAGE0_INI_ADDR);
+		*addr = htole16(i + NVM_NORMAL_PAGE0_INI_ADDR);
 		ret = write_then_read(cmd, 3, in, N_BYTES_FOR_READ);
 		if (0 != ret)
 			return ret;
@@ -326,7 +333,7 @@ end:
 	return ret;
 }
 
-int _write_infopage(const char *buf)
+int _write_infopage(const uint8_t *buf)
 {
 	int i;
 	const uint8_t *infopage = NULL;
@@ -346,7 +353,7 @@ int _write_infopage(const char *buf)
 		_wait_for_ready();
 
 		cmd[0] = SPICMD_PROGRAM;
-		*addr = htons(i);
+		*addr = htole16(i);
 		memcpy(cmd + 3, infopage, N_BYTES_FOR_WRITE);
 
 		if (0 != write_then_read(cmd, 3 + N_BYTES_FOR_WRITE, NULL, 0))
@@ -359,7 +366,7 @@ int _write_infopage(const char *buf)
 	return (error_count > 0) ? -error_count : i;
 }
 
-int _write_nvm_normal(const char *buf)
+int _write_nvm_normal(const uint8_t *buf)
 {
 	int i;
 	const uint8_t *mem = NULL;
@@ -379,7 +386,7 @@ int _write_nvm_normal(const char *buf)
 		_wait_for_ready();
 
 		cmd[0] = SPICMD_PROGRAM;
-		*addr = htons(i + NVM_NORMAL_PAGE0_INI_ADDR);
+		*addr = htole16(i + NVM_NORMAL_PAGE0_INI_ADDR);
 		memcpy(cmd + 3, mem, N_BYTES_FOR_WRITE);
 
 		if (0 != write_then_read(cmd, 3 + N_BYTES_FOR_WRITE, NULL, 0))
@@ -393,7 +400,7 @@ int _write_nvm_normal(const char *buf)
 }
 
 ssize_t
-da_infopage_store(const char *buf, size_t count)
+da_infopage_store(const uint8_t *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
@@ -446,7 +453,7 @@ end:
 }
 
 ssize_t
-da_infopage_show(char *buf)
+da_infopage_show(uint8_t *buf)
 {
 	int ret;
 	int size;
@@ -487,7 +494,7 @@ end:
 }
 
 ssize_t
-da_nvm_normal_show(char* buf)
+da_nvm_normal_show(uint8_t* buf)
 {
 	int ret;
 	int size;
@@ -518,7 +525,7 @@ end:
 }
 
 ssize_t
-da_nvm_normal_store(const char *buf, size_t count)
+da_nvm_normal_store(const uint8_t *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
@@ -681,11 +688,11 @@ void _erase_program_pages(void)
 	}
 }
 
-ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
+ssize_t uhet_write(uint8_t *buf, size_t count, unsigned long *off)
 {
 	unsigned long ret;
 	uint8_t cmd[3 + count];
-	uint8_t  i =0, k = 0;
+	uint8_t  i =0;
 	uint16_t addr = 0;
 
 	if (0 == _enable_program) {
@@ -713,7 +720,8 @@ ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
 		printf("ADDR: %02X %02X\n",((addr & 0xff00) >> 8), (addr & 0x00ff));
 		memcpy(cmd + 3, &buf[addr], 512);
 
-		if(!__enable_wren()) return;
+		if(!__enable_wren())
+			return -EFAULT;
 
 		printf("b0:%02X    b1:%02X   b2: %02X\n",cmd[0], cmd[2], cmd[1]);
 		write_then_read(cmd, 3 + 512, NULL, 0);
@@ -726,7 +734,7 @@ ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
 }
 
 ssize_t
-uhet_read(char* buf, size_t count, unsigned long *off)
+uhet_read(uint8_t* buf, size_t count, unsigned long *off)
 {
 
 	if (0 == _enable_program) {
@@ -738,10 +746,8 @@ uhet_read(char* buf, size_t count, unsigned long *off)
 	// lendo da flash
 	{
 		uint8_t cmd[3];
-		uint8_t *byte;
 		uint16_t *addr = (uint16_t *) (cmd + 1);
 		//uint8_t data[count];
-		int i;
 
 		cmd[0] = SPICMD_READ;
 		cmd[1] = 0;

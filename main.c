@@ -9,7 +9,7 @@
 
 #include "nrf24le1.h"
 
-void nrf_save_data(uint8_t * buf, uint16_t count, uint8_t * fname)
+static void nrf_save_data(uint8_t * buf, uint16_t count, char * fname)
 {
 	size_t size_writed = 0, idx = 0;
 	FILE * fd;
@@ -24,14 +24,16 @@ void nrf_save_data(uint8_t * buf, uint16_t count, uint8_t * fname)
 	fclose(fd);
 }
 
-void nrf_restore_data(uint8_t * buf, uint16_t count, uint8_t * fname)
+static void nrf_restore_data(uint8_t * buf, uint16_t count, char * fname)
 {
 	FILE * fd;
 	fd = fopen(fname, "r");
 	fread(buf, 1, count, fd);
 	fclose(fd);
 }
-int main(void) {
+
+int main(void)
+{
 	uint8_t bufread[17000];
 	unsigned long off = 0;
 	size_t count =16384;
@@ -60,7 +62,7 @@ int main(void) {
 
 	enable_program(0);
 
-	wiring_destroy();
+	nrf24le1_cleanup();
 	
   	return 0;
 }

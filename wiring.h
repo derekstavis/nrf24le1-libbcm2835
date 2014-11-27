@@ -17,7 +17,8 @@
 #define mdelay(ms)		bcm2835_delayMicroseconds(ms*1000)
 
 /* Wiring functions for bootstraping SPI */
-void wiring_init();
+void wiring_init(void);
+void wiring_destroy(void);
 
 /* Full-duplex read and write function */
 uint8_t wiring_write_then_read(uint8_t* out, 
