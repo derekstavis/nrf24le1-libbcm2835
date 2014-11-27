@@ -9,10 +9,6 @@ linux device driver.
 - You must be using Raspbian with `bcm2835` and `rt` libraries installed.
 - In some cases this tool must be run as superuser 
 
-## Roadmap
-- Pass `da_test_show` test: __ok?__
-- Implement more extensive tests
-
 ## Features (in a distant future)
 - Program memory read/write
 - NVM memory read/write

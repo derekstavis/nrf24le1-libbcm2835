@@ -239,8 +239,18 @@ end:
 	return ret;
 }
 
+static void dump_fsr(uint8_t fsr)
+{
+	printf("-> FSR.RDISMB: %i\n",  (fsr & FSR_RDISMB ? 1 : 0));
+	printf("-> FSR.INFEN: %i\n",   (fsr & FSR_INFEN ? 1 : 0));
+	printf("-> FSR.RDYN: %i\n",    (fsr & FSR_RDYN ? 1 : 0));
+	printf("-> FSR.WEN: %i\n",     (fsr & FSR_WEN ? 1 : 0));
+	printf("-> FSR.STP: %i\n",     (fsr & FSR_STP ? 1 : 0));
+	printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
+}
+
 ssize_t
-da_test_show()
+da_test_show(int dump)
 {
 	uint8_t cmd;
 	uint8_t fsr;
@@ -254,45 +264,38 @@ da_test_show()
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += printf("* FSR original\n");
-	ret += printf("-> FSR.RDISMB: %i\n",  (fsr & FSR_RDISMB ? 1 : 0));
-	ret += printf("-> FSR.INFEN: %i\n",   (fsr & FSR_INFEN ? 1 : 0));
-	ret += printf("-> FSR.RDYN: %i\n",    (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n",     (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n",     (fsr & FSR_STP ? 1 : 0));
-	ret += printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
+	if (dump) {
+		printf("* FSR original\n");
+		dump_fsr(fsr);
+	}
 
 	cmd = SPICMD_WREN;
 	write_then_read(&cmd, 1, NULL, 0);
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += printf("* FSR apos WREN, WEN deve ser 1\n");
-	ret += printf("-> FSR.RDISMB: %i\n", (fsr & FSR_RDISMB ? 1 : 0));
-	ret += printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
-	ret += printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
-	ret += printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
+	if (dump) {
+		printf("* FSR apos WREN, WEN deve ser 1\n");
+		dump_fsr(fsr);
+	}
+	if ((fsr & FSR_WEN) == 0) {
+		printf("Failed to set Write Enable bit to 1\n");
+		ret = -EFAULT;
+	}
 
 	cmd = SPICMD_WRDIS;
 	write_then_read(&cmd, 1, NULL, 0);
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += printf("* FSR apos WRDIS, WEN deve ser 0\n");
-	ret +=
-	    printf("-> FSR.RDISMB: %i\n",
-		    (fsr & FSR_RDISMB ? 1 : 0));
-	ret +=
-	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
-	ret +=
-	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
-	ret +=
-	    printf("-> FSR.ENDEBUG: %i\n",
-		    (fsr & FSR_ENDEBUG ? 1 : 0));
+	if (dump) {
+		printf("* FSR apos WRDIS, WEN deve ser 0\n");
+		dump_fsr(fsr);
+	}
+	if ((fsr & FSR_WEN) == 1) {
+		printf("Failed to set Write Enable bit to 0\n");
+		ret = -EFAULT;
+	}
 
 end:
 	return ret;

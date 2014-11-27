@@ -75,25 +75,30 @@ int main(int argc, char **argv)
 
 	da_enable_program_store(1);
 
-	switch (cmd) {
-	case CMD_SHOW: da_test_show(); break;
-	case CMD_WRITE:
-		nrf_restore_data(bufread, count, "./firmw/blink.img");
-		uhet_write(bufread, 16384, &off);
-		nrf_save_data(bufread, count, "./firmw/blink-dump.img");
-		break;
+	if (cmd == CMD_SHOW) {
+		da_test_show(1);
+	} else {
+		// First we make sure we have proper SPI connectivity
+		if (da_test_show(0) == 0) {
+			// Now we run the command
+			switch (cmd) {
+				case CMD_WRITE:
+					nrf_restore_data(bufread, count, "./firmw/blink.img");
+					uhet_write(bufread, 16384, &off);
+					nrf_save_data(bufread, count, "./firmw/blink-dump.img");
+					break;
 
-	case CMD_READ:
-		memset(bufread, 0, sizeof(bufread));
-		uhet_read(bufread, count, &off);
-		nrf_save_data(bufread, count, "./blink-dump2.img");
-		break;
-	
-	default:
-		break;
+				case CMD_READ:
+					memset(bufread, 0, sizeof(bufread));
+					uhet_read(bufread, count, &off);
+					nrf_save_data(bufread, count, "./blink-dump2.img");
+					break;
+
+				default:
+					break;
+			}
+		}
 	}
-
-	//da_erase_all_store();
 
 	da_enable_program_store(0);
 
