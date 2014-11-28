@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdint.h>
 
+#include <sys/mman.h>
+#include <sched.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -32,6 +34,18 @@ static cmd_e arg_to_cmd(const char *arg)
 		return CMD_WRITE;
 	else
 		return CMD_UNKNOWN;
+}
+
+static void real_time_schedule(void)
+{
+	// Set real-time FIFO schedule to have utmost chance to have exact delays
+	struct sched_param sp;
+	memset(&sp, 0, sizeof(sp));
+	sp.sched_priority = sched_get_priority_max(SCHED_FIFO);
+	sched_setscheduler(0, SCHED_FIFO, &sp);
+
+	// Make us unpageable, lock all pages to RAM with no swapping allowed
+	mlockall(MCL_CURRENT | MCL_FUTURE);
 }
 
 static void nrf_save_data(uint8_t * buf, uint16_t count, char * fname)
@@ -72,6 +86,7 @@ int main(int argc, char **argv)
 	memset(bufread, 0, sizeof(bufread));
 
 	nrf24le1_init();
+	real_time_schedule();
 
 	da_enable_program_store(1);
 
