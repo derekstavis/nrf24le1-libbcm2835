@@ -28,7 +28,7 @@
 #define FSR_STP       (1 << 6)
 #define FSR_ENDEBUG   (1 << 7)
 
-/* NVM Extended endurance data  pages: 32,33 */
+/* NVM Extended endurance data  pages: 32,33, these are not accessible over SPI, only internally. */
 #define NVM_NORMAL_PAGE0           34
 #define NVM_NORMAL_PAGE0_INI_ADDR  0x4400
 #define NVM_NORMAL_PAGE0_END_ADDR  0x45FF
