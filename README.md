@@ -20,21 +20,26 @@ For further development, the tool should conform to the above protocol.
 
 ### Reading data from nRF24LE1
 
-`nrf24le1 read infopage`
+`nrf24le1 read infopage [filename]`
 
-`nrf24le1 read firmware`
+`nrf24le1 read firmware [filename]`
 
-`nrf24le1 read nvm`
+`nrf24le1 read nvm [filename]`
 
-All read oprations dump data to stdout.
+All read oprations dump data to stdout by default in Intel Hex format, it is
+possible to provide an optional filename as an argument and it will be saved in
+Intel Hex format if the suffix is .hex or .ihx and in binary format otherwise.
 
 ### Writing data to nRF24LE1
 
-`nrf24le1 write firmware blink.img`
+`nrf24le1 write firmware [filename]
 
-`nrf24le1 write infopage infopage.img`
+`nrf24le1 write infopage [filename]`
 
-`nrf24le1 write nvm memory.img`
+`nrf24le1 write nvm [filename]`
+
+The files are expected to be either in Intel Hex format if they have a suffix
+of .hex or .ihx and binary format otherwise.
 
 ### Additional Parameters:
 
