@@ -2,23 +2,25 @@
 A simple command-line interface with Nordic nRF24LE1 using 
 RaspberryPi over bcm2835 library.
 
-This tool is mostly a userpace port of @holoturoide's nrf24le1 
+This tool started as a userpace port of **@hltrd** nrf24le1
 linux device driver.
 
-## Requirements
-- You must be using Raspbian with `bcm2835` and `rt` libraries installed.
-- In some cases this tool must be run as superuser 
-
-## Features (in a distant future)
+## Features
 - Program memory read/write
 - NVM memory read/write
 - InfoPage handling
+
+## Requirements
+- You must be using a Linux distro with `bcm2835` and `rt` 
+libraries installed.
+- If your partition is mounted with `nosuid` probably you 
+will need to run this tool as root.
 
 ## Command Line Format
 
 For further development, the tool should conform to the above protocol.
 
-### Miscallenous
+### Miscellaneous
 
 `nrf24le1 show`
 
@@ -37,20 +39,27 @@ Reset the unit on the programmer, this resets the MCU to start the program afres
 
 `nrf24le1 read nvm [filename]`
 
-All read oprations dump data to stdout by default in Intel Hex format, it is
-possible to provide an optional filename as an argument and it will be saved in
-Intel Hex format if the suffix is .hex or .ihx and in binary format otherwise.
+All read operations dump data to stdout by default, in Intel Hex format. 
+It's possible to provide an optional filename as an argument.
+
+When a filename is specified and the extension matches .hex or .ihx the 
+dump will be saved in Intel Hex format, otherwise the binary format will 
+be used.
 
 ### Writing data to nRF24LE1
 
-`nrf24le1 write firmware [filename]
+`nrf24le1 write firmware [filename]`
 
 `nrf24le1 write infopage [filename]`
 
 `nrf24le1 write nvm [filename]`
 
-The files are expected to be either in Intel Hex format if they have a suffix
-of .hex or .ihx and binary format otherwise.
+All write operations expect data from stdin by default, in Intel Hex format.
+It's possible to provide an optional filename as an argument.
+
+When a filename is specified and the extension matches .hex or .ihx the 
+dump will be saved in Intel Hex format, otherwise the binary format will 
+be used.
 
 ### Additional Parameters:
 
@@ -63,9 +72,6 @@ of .hex or .ihx and binary format otherwise.
 
 # References
 
-* Nordic nRF24LE1:
-<http://www.nordicsemi.com/eng/Products/2.4GHz-RF/nRF24LE1>
-* bcm2835 Library: 
-<http://www.airspayce.com/mikem/bcm2835/>
-* @holoturoide's linux device driver: 
-<https://bitbucket.org/erm/nrf24le1>
+* Nordic nRF24LE1: <http://www.nordicsemi.com/eng/Products/2.4GHz-RF/nRF24LE1>
+* bcm2835 Library: <http://www.airspayce.com/mikem/bcm2835/>
+* **hltrd** linux device driver: <https://bitbucket.org/erm/nrf24le1>
