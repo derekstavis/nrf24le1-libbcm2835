@@ -31,7 +31,7 @@ $(OBJ_PATH)/nrf24le1.o: wiring.h nrf24le1.h
 $(OBJ_PATH)/main.o: nrf24le1.h
 
 install:
-	install -m 0777 $(BIN_PATH)/$(PROJECT_NAME) /usr/local/bin/$(PROJECT_NAME)
+	install -m 06777 $(BIN_PATH)/$(PROJECT_NAME) /usr/local/bin/$(PROJECT_NAME)
 
 clean:
 	rm -f $(OBJ_PATH)/* $(BIN_PATH)/*

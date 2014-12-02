@@ -38,6 +38,8 @@
 #define NVM_NORMAL_NUMBER_OF_PAGES 2
 #define NVM_NORMAL_MEM_SIZE        (NVM_NORMAL_NUMBER_OF_PAGES * NRF_PAGE_SIZE)
 
+#define INFO_PAGE_SIZE (NRF_PAGE_SIZE)
+
 #define NRF_PAGE_SIZE     (512)
 #define N_PAGES           (32)
 #define MAX_FIRMWARE_SIZE (NRF_PAGE_SIZE * N_PAGES) /* 16Kb */
@@ -61,6 +63,7 @@ void nrf24le1_cleanup(void);
 ssize_t uhet_read(uint8_t* buf, size_t count, unsigned long *off);
 ssize_t uhet_write(uint8_t* buf, size_t count, unsigned long *off);
 
+void da_reset(void);
 ssize_t da_test_show(int dump);
 ssize_t da_infopage_show(uint8_t * buf);
 ssize_t da_nvm_normal_show(uint8_t * buf);
