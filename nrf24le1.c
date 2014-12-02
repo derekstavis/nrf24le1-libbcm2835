@@ -1,8 +1,7 @@
-#ifndef __NRF24LE1_H__
-#define __NRF24LE1_H__
-
 #include "nrf24le1.h"
 #include "wiring.h"
+
+#include <endian.h>
 
 #define NAME "nrf24le1"
 
@@ -21,42 +20,52 @@ int _enable_program = 0;
 \
 	__ret = wiring_write_then_read(out,n_out,in,n_in); \
 	if (0 > __ret){ \
-		debug("falha na operacao de write_then_read"); \
+		debug("Failed operation write_then_read"); \
 	} \
 \
 	__ret; \
 })
 
-void enable_program(uint8_t state)
-{
-	wiring_set_gpio_value(GPIO_PROG, state);	
-	_enable_program = state;
-}
-
 void nrf24le1_init()
 {
-	debug("Inicializando nRF24LE1\n");
+	debug("Initializing nRF24LE1\n");
 	wiring_init();
+}
+
+void nrf24le1_cleanup(void)
+{
+	wiring_destroy();
+}
+
+static void dump_fsr(uint8_t fsr)
+{
+	printf("-> FSR.RDISMB: %i\n",  (fsr & FSR_RDISMB ? 1 : 0));
+	printf("-> FSR.INFEN: %i\n",   (fsr & FSR_INFEN ? 1 : 0));
+	printf("-> FSR.RDYN: %i\n",    (fsr & FSR_RDYN ? 1 : 0));
+	printf("-> FSR.WEN: %i\n",     (fsr & FSR_WEN ? 1 : 0));
+	printf("-> FSR.STP: %i\n",     (fsr & FSR_STP ? 1 : 0));
+	printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
 }
 
 void _wait_for_ready(void)
 {
-	uint8_t cmd[1] = { SPICMD_RDSR };
-	uint8_t fsr[1] = { 0xAA };
+	uint8_t cmd = { SPICMD_RDSR };
+	uint8_t fsr = { 0xAA };
 	int count = 0;
 
 	do {
 		if (count == 1000) {
-			debug("nao posso esperar pra sempre mano, FSR: 0x%X",
-			      *fsr);
+			debug("Failed to wait for flash to be ready, FSR: 0x%X",
+			      fsr);
+			dump_fsr(fsr);
 			return;
 		}
 		count++;
 
-		wiring_write_then_read(cmd, 1, fsr, 1);
+		wiring_write_then_read(&cmd, 1, &fsr, 1);
 		udelay(500);
 
-	} while (*fsr & FSR_RDYN);
+	} while (fsr & FSR_RDYN);
 }
 
 int _enable_infopage_access(void)
@@ -80,8 +89,8 @@ int _enable_infopage_access(void)
 	write_then_read(cmd, 1, in, 1);
 
 	// comparando escrita
-	if (in[0] != (fsr_orig | FSR_INFEN)) {
-		debug("falha em habilitar acesso a infopage %X %X", fsr_orig,
+	if ((in[0] & FSR_INFEN) == 0) {
+		debug("Failed to enable infopage access %X %X", fsr_orig,
 		      in[0]);
 		return -EINVAL;
 	}
@@ -89,7 +98,7 @@ int _enable_infopage_access(void)
 	return 0;
 }
 
-int _read_infopage(char *buf)
+int _read_infopage(uint8_t *buf)
 {
 	int i;
 	int ret = 0;
@@ -98,12 +107,12 @@ int _read_infopage(char *buf)
 	uint8_t in[N_BYTES_FOR_READ];
 
 	uint16_t *addr = (uint16_t *) (cmd + 1);
-	char *p = buf;
+	uint8_t *p = buf;
 
 	cmd[0] = SPICMD_READ;
 	for (i = 0; i < NRF_PAGE_SIZE; i += N_BYTES_FOR_READ) {
 
-		*addr = htons(i);
+		*addr = htole16(i);
 		ret = write_then_read(cmd, 3, in, N_BYTES_FOR_READ);
 		if (0 != ret)
 			return ret;
@@ -113,12 +122,12 @@ int _read_infopage(char *buf)
 		p += N_BYTES_FOR_READ;
 	}
 
-	debug("numero de bytes lidos: %i\n", p - buf);
+	debug("Number of bytes read: %i\n", p - buf);
 
-	return p - buf;		// numero de bytes lidos;
+	return p - buf;
 }
 
-int _read_nvm_normal(char *buf)
+int _read_nvm_normal(uint8_t *buf)
 {
 	int i;
 	int ret = 0;
@@ -127,12 +136,12 @@ int _read_nvm_normal(char *buf)
 	uint8_t in[N_BYTES_FOR_READ];
 
 	uint16_t *addr = (uint16_t *) (cmd + 1);
-	char *p = buf;
+	uint8_t *p = buf;
 
 	cmd[0] = SPICMD_READ;
 	for (i = 0; i < NVM_NORMAL_MEM_SIZE; i += N_BYTES_FOR_READ) {
 
-		*addr = htons(i + NVM_NORMAL_PAGE0_INI_ADDR);
+		*addr = htole16(i + NVM_NORMAL_PAGE0_INI_ADDR);
 		ret = write_then_read(cmd, 3, in, N_BYTES_FOR_READ);
 		if (0 != ret)
 			return ret;
@@ -142,9 +151,9 @@ int _read_nvm_normal(char *buf)
 		p += N_BYTES_FOR_READ;
 	}
 
-	debug("numero de bytes lidos: %i\n", p - buf);
+	debug("Number of bytes read: %i\n", p - buf);
 
-	return p - buf;		// numero de bytes lidos;
+	return p - buf;
 }
 
 int _disable_infopage_access(void)
@@ -168,8 +177,8 @@ int _disable_infopage_access(void)
 	write_then_read(cmd, 1, in, 1);
 
 	// comparando escrita
-	if (in[0] != (fsr_orig & ~(FSR_INFEN))) {
-		debug("falha em desabilitar acesso a infopage %X %X",
+	if ((in[0] & FSR_INFEN) != 0) {
+		debug("Failed to disable infopage access %X %X",
 		      fsr_orig, in[0]);
 		return -EINVAL;
 	}
@@ -180,13 +189,7 @@ int _disable_infopage_access(void)
 ssize_t
 da_enable_program_show()
 {
-//	int ret = mutex_trylock(&mutex);
-//	if (0 == ret)
-//		return -ERESTARTSYS;
-
 	printf("%i\n", _enable_program);
-
-//	mutex_unlock(&mutex);
 	return 0;
 }
 
@@ -194,15 +197,6 @@ ssize_t
 da_enable_program_store(uint8_t state)
 {
 	int ret = 0;
-
-//	debug("enable program, antes do mutex");
-
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret) {
-//		return -ERESTARTSYS;
-//	}
-
-//	debug("enable program, depois do mutex");
 
 	if (state != 0 && state != 1) {
 		ret = -EINVAL;
@@ -236,7 +230,6 @@ da_enable_program_store(uint8_t state)
 	}
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
@@ -245,12 +238,8 @@ da_erase_all_store()
 {
 	int ret = 0;
 
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret)
-//		return -ERESTARTSYS;
-
 	if (0 == _enable_program) {
-		debug("falha, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		ret = -EINVAL;
 		goto end;
 	}
@@ -258,75 +247,62 @@ da_erase_all_store()
 	_erase_all();
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
 ssize_t
-da_test_show()
+da_test_show(int dump)
 {
 	uint8_t cmd;
 	uint8_t fsr;
 	int ret = 0;
 
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret)
-//		return -ERESTARTSYS;
-
 	if (0 == _enable_program) {
-		debug("falha, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		ret = -EINVAL;
 		goto end;
 	}
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += printf("* FSR original\n");
-	ret += printf("-> FSR.RDISMB: %i\n",  (fsr & FSR_RDISMB ? 1 : 0));
-	ret += printf("-> FSR.INFEN: %i\n",   (fsr & FSR_INFEN ? 1 : 0));
-	ret += printf("-> FSR.RDYN: %i\n",    (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n",     (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n",     (fsr & FSR_STP ? 1 : 0));
-	ret += printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
+	if (dump) {
+		printf("* FSR original\n");
+		dump_fsr(fsr);
+	}
 
 	cmd = SPICMD_WREN;
 	write_then_read(&cmd, 1, NULL, 0);
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += printf("* FSR apos WREN, WEN deve ser 1\n");
-	ret += printf("-> FSR.RDISMB: %i\n", (fsr & FSR_RDISMB ? 1 : 0));
-	ret += printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
-	ret += printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
-	ret += printf("-> FSR.ENDEBUG: %i\n", (fsr & FSR_ENDEBUG ? 1 : 0));
+	if (dump) {
+		printf("* FSR apos WREN, WEN deve ser 1\n");
+		dump_fsr(fsr);
+	}
+	if ((fsr & FSR_WEN) == 0) {
+		printf("Failed to set Write Enable bit to 1\n");
+		ret = -EFAULT;
+	}
 
 	cmd = SPICMD_WRDIS;
 	write_then_read(&cmd, 1, NULL, 0);
 
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
-	ret += printf("* FSR apos WRDIS, WEN deve ser 0\n");
-	ret +=
-	    printf("-> FSR.RDISMB: %i\n",
-		    (fsr & FSR_RDISMB ? 1 : 0));
-	ret +=
-	    printf("-> FSR.INFEN: %i\n", (fsr & FSR_INFEN ? 1 : 0));
-	ret +=
-	    printf("-> FSR.RDYN: %i\n", (fsr & FSR_RDYN ? 1 : 0));
-	ret += printf("-> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
-	ret += printf("-> FSR.STP: %i\n", (fsr & FSR_STP ? 1 : 0));
-	ret +=
-	    printf("-> FSR.ENDEBUG: %i\n",
-		    (fsr & FSR_ENDEBUG ? 1 : 0));
+	if (dump) {
+		printf("* FSR apos WRDIS, WEN deve ser 0\n");
+		dump_fsr(fsr);
+	}
+	if ((fsr & FSR_WEN) == 1) {
+		printf("Failed to set Write Enable bit to 0\n");
+		ret = -EFAULT;
+	}
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
-int _write_infopage(const char *buf)
+int _write_infopage(const uint8_t *buf)
 {
 	int i;
 	const uint8_t *infopage = NULL;
@@ -341,12 +317,12 @@ int _write_infopage(const char *buf)
 
 		cmd[0] = SPICMD_WREN;
 		if (0 > write_then_read(cmd, 1, NULL, 0))
-			debug("falha em SPICMD_WREN");
+			debug("Failed in SPICMD_WREN");
 
 		_wait_for_ready();
 
 		cmd[0] = SPICMD_PROGRAM;
-		*addr = htons(i);
+		*addr = htole16(i);
 		memcpy(cmd + 3, infopage, N_BYTES_FOR_WRITE);
 
 		if (0 != write_then_read(cmd, 3 + N_BYTES_FOR_WRITE, NULL, 0))
@@ -359,7 +335,7 @@ int _write_infopage(const char *buf)
 	return (error_count > 0) ? -error_count : i;
 }
 
-int _write_nvm_normal(const char *buf)
+int _write_nvm_normal(const uint8_t *buf)
 {
 	int i;
 	const uint8_t *mem = NULL;
@@ -374,12 +350,12 @@ int _write_nvm_normal(const char *buf)
 
 		cmd[0] = SPICMD_WREN;
 		if (0 > write_then_read(cmd, 1, NULL, 0))
-			debug("falha em SPICMD_WREN");
+			debug("Failed in SPICMD_WREN");
 
 		_wait_for_ready();
 
 		cmd[0] = SPICMD_PROGRAM;
-		*addr = htons(i + NVM_NORMAL_PAGE0_INI_ADDR);
+		*addr = htole16(i + NVM_NORMAL_PAGE0_INI_ADDR);
 		memcpy(cmd + 3, mem, N_BYTES_FOR_WRITE);
 
 		if (0 != write_then_read(cmd, 3 + N_BYTES_FOR_WRITE, NULL, 0))
@@ -393,24 +369,19 @@ int _write_nvm_normal(const char *buf)
 }
 
 ssize_t
-da_infopage_store(const char *buf, size_t count)
+da_infopage_store(const uint8_t *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
 
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret) {
-//		return -ERESTARTSYS;
-//	}
-
 	if (0 == _enable_program) {
-		debug("falha, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		ret = -EINVAL;
 		goto end;
 	}
 
 	if (NRF_PAGE_SIZE != count) {
-		debug("tamanho da infopage(%i) diferente de NRF_PAGE_SIZE(%i)",
+		debug("Count in infopage(%i) is different from NRF_PAGE_SIZE(%i)",
 		      count, NRF_PAGE_SIZE);
 		ret = -EINVAL;
 		goto end;
@@ -422,40 +393,34 @@ da_infopage_store(const char *buf, size_t count)
 
 	_erase_page(0);
 
-	debug("iniciando escrita da memoria");
+	debug("Initiate writing to infopage");
 	ret = _write_infopage(buf);
 	if (0 > ret) {
-		debug("numero de erros na escrita da infopage: %i", -1 * ret);
+		debug("Number of errors writing to infopage: %i", -1 * ret);
 	} else {
-		debug("bytes escritos na infopage: %i", ret);
+		debug("Number of writes written to infopage: %i", ret);
 		size = ret;
 	}
-	debug("fim da escrita da memoria");
+	debug("Finished writing to infopage");
 
 	ret = _disable_infopage_access();
-	if (0 != ret) {
-		debug("falha em desabilitar acesso a infopage");
+	if (0 != ret)
 		goto end;
-	}
 
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
 ssize_t
-da_infopage_show(char *buf)
+da_infopage_show(uint8_t *buf)
 {
 	int ret;
 	int size;
 
-//	if (0 == mutex_trylock(&mutex))
-//		return -ERESTARTSYS;
-
 	if (0 == _enable_program) {
-		debug("fail, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		ret = -EINVAL;
 		goto end;
 	}
@@ -468,35 +433,28 @@ da_infopage_show(char *buf)
 
 	size = _read_infopage(buf);
 	if (0 > size) {
-		debug("falha em ler a infopage, size: %i", size);
+		debug("Failed reading from infopage, size: %i", size);
 	}
 
 	ret = _disable_infopage_access();
-	if (0 != ret) {
-		debug("falha em desabilitar acesso a infopage");
+	if (0 != ret)
 		goto end;
-	}
 
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
-
 	debug("end");
 	return ret;
 }
 
 ssize_t
-da_nvm_normal_show(char* buf)
+da_nvm_normal_show(uint8_t* buf)
 {
 	int ret;
 	int size;
 
-//	if (0 == mutex_trylock(&mutex))
-//		return -ERESTARTSYS;
-
 	if (0 == _enable_program) {
-		debug("fail, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		ret = -EINVAL;
 		goto end;
 	}
@@ -505,38 +463,31 @@ da_nvm_normal_show(char* buf)
 
 	size = _read_nvm_normal(buf);
 	if (0 > size) {
-		debug("falha em ler a infopage, size: %i", size);
+		debug("Failed reading nvm, size: %i", size);
 	}
 
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
-
 	debug("end");
 	return ret;
 }
 
 ssize_t
-da_nvm_normal_store(const char *buf, size_t count)
+da_nvm_normal_store(const uint8_t *buf, size_t count)
 {
 	int ret = 0;
 	int size = -1;
 
-//	ret = mutex_trylock(&mutex);
-//	if (0 == ret) {
-//		return -ERESTARTSYS;
-//	}
-
 	if (0 == _enable_program) {
-		debug("falha, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		ret = -EINVAL;
 		goto end;
 	}
 
 	if (NVM_NORMAL_MEM_SIZE != count) {
 		debug
-		    ("tamanho da imagem(%i) diferente de NVM_NORMAL_MEM_SIZE(%i)",
+		    ("Size of image(%i) differs from NVM_NORMAL_MEM_SIZE(%i)",
 		     count, NVM_NORMAL_MEM_SIZE);
 		ret = -EINVAL;
 		goto end;
@@ -545,26 +496,25 @@ da_nvm_normal_store(const char *buf, size_t count)
 	_erase_page(NVM_NORMAL_PAGE0);
 	_erase_page(NVM_NORMAL_PAGE1);
 
-	debug("iniciando escrita da memoria");
+	debug("Initating writing to memory");
 	ret = _write_nvm_normal(buf);
 	if (0 > ret) {
-		debug("numero de erros na escrita da nvm_normal: %i", -1 * ret);
+		debug("Number of errors writing to nvm_normal: %i", -1 * ret);
 	} else {
-		debug("bytes escritos: %i", ret);
+		debug("bytes written: %i", ret);
 		size = ret;
 	}
-	debug("fim da escrita da memoria");
+	debug("Finished writing to memory");
 
 	ret = size;
 
 end:
-//	mutex_unlock(&mutex);
 	return ret;
 }
 
 void uhet_record_init(void)
 {
-	printf("iniciando gravacao\n");
+	printf("Initiate programming\n");
 
 	wiring_set_gpio_value(GPIO_PROG, 1);
 	mdelay(10);
@@ -578,8 +528,6 @@ void uhet_record_init(void)
 
 void uhet_record_end(void)
 {
-	printf("finalizando gravacao\n");
-
 	wiring_set_gpio_value(GPIO_PROG, 0);
 	mdelay(1);
 
@@ -589,37 +537,16 @@ void uhet_record_end(void)
 	wiring_set_gpio_value(GPIO_RESET, 1);
 
 	mdelay(10);
-}
 
-int _toc_toc_tem_alguem_ae(void)
-{
-	uint8_t out[1] = { 0 };
-	uint8_t fsr_after_wren;
-	uint8_t fsr_after_wrdis;
-
-	out[0] = SPICMD_WREN;
-	write_then_read(out, 1, NULL, 0);
-
-	out[0] = SPICMD_RDSR;
-	write_then_read(out, 1, &fsr_after_wren, 1);
-
-	out[0] = SPICMD_WRDIS;
-	write_then_read(out, 1, NULL, 0);
-
-	out[0] = SPICMD_RDSR;
-	write_then_read(out, 1, &fsr_after_wrdis, 1);
-
-	if ((0 != (fsr_after_wren & FSR_WEN)) &&
-	    (0 == (fsr_after_wrdis & FSR_WEN)))
-		return 0;
-
-	return -EINVAL;
+	printf("Finished programming\n");
 }
 
 void _erase_all(void)
 {
 	uint8_t cmd[1];
 	int ret;
+
+	printf("Initiating erase of all pages\n");
 
 	cmd[0] = SPICMD_WREN;
 	write_then_read(cmd, 1, NULL, 0);
@@ -628,9 +555,11 @@ void _erase_all(void)
 	cmd[0] = SPICMD_ERASEALL;
 	ret = write_then_read(cmd, 1, NULL, 0);
 	if (0 == ret)
-		debug("apagando a bagaca toda, ai como eu to bandida");
+		debug("Error erasing all data");
 
 	_wait_for_ready();
+
+	printf("Done erasing all pages\n");
 }
 
 
@@ -644,9 +573,9 @@ uint8_t __enable_wren(void)
 	cmd = SPICMD_RDSR;
 	write_then_read(&cmd, 1, &fsr, 1);
 
-	if((fsr & FSR_WEN ? 1 : 0) == 0)
+	if ((fsr & FSR_WEN) == 0)
 	{
-		printf("Escrita nao pode ser habilitada -> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
+		printf("Failed to enable flash programming -> FSR.WEN: %i\n", (fsr & FSR_WEN ? 1 : 0));
 		return 0;
 	}
 
@@ -666,7 +595,8 @@ void _erase_page(unsigned i)
 	cmd[1] = i;
 	ret = write_then_read(cmd, 2, NULL, 0);
 
-	if (0 == ret) printf("apagando a pagina: %i\n", i);
+	if (0 == ret)
+		printf("Erased page: %i\n", i);
 
 	_wait_for_ready();
 }
@@ -681,21 +611,14 @@ void _erase_program_pages(void)
 	}
 }
 
-ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
+ssize_t uhet_write(uint8_t *buf, size_t count, unsigned long *off)
 {
-	unsigned long ret;
 	uint8_t cmd[3 + count];
-	uint8_t  i =0, k = 0;
+	uint8_t  i =0;
 	uint16_t addr = 0;
 
 	if (0 == _enable_program) {
-		debug("tentando gravar sendo que enable_pragram = 0");
-		return -EINVAL;
-	}
-
-	ret = _toc_toc_tem_alguem_ae();
-	if (0 != ret) {
-		debug("flash nao responde :/");
+		debug("Failed, enable_pragram = 0");
 		return -EINVAL;
 	}
 
@@ -713,7 +636,8 @@ ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
 		printf("ADDR: %02X %02X\n",((addr & 0xff00) >> 8), (addr & 0x00ff));
 		memcpy(cmd + 3, &buf[addr], 512);
 
-		if(!__enable_wren()) return;
+		if(!__enable_wren())
+			return -EFAULT;
 
 		printf("b0:%02X    b1:%02X   b2: %02X\n",cmd[0], cmd[2], cmd[1]);
 		write_then_read(cmd, 3 + 512, NULL, 0);
@@ -726,22 +650,20 @@ ssize_t uhet_write(char *buf, size_t count, unsigned long *off)
 }
 
 ssize_t
-uhet_read(char* buf, size_t count, unsigned long *off)
+uhet_read(uint8_t* buf, size_t count, unsigned long *off)
 {
 
 	if (0 == _enable_program) {
-		debug("falha, enable_program = 0");
+		debug("Failed, enable_program = 0");
 		return -EINVAL;
 	}
 
-	printf("Quantidade de dados a ser lido: %i   %d\n", count, MAX_FIRMWARE_SIZE);
+	printf("Number of bytes to read: %i, max flash size %d\n", count, MAX_FIRMWARE_SIZE);
 	// lendo da flash
 	{
 		uint8_t cmd[3];
-		uint8_t *byte;
 		uint16_t *addr = (uint16_t *) (cmd + 1);
 		//uint8_t data[count];
-		int i;
 
 		cmd[0] = SPICMD_READ;
 		cmd[1] = 0;
@@ -750,7 +672,7 @@ uhet_read(char* buf, size_t count, unsigned long *off)
 		write_then_read(cmd, 3, buf, count);
 
 		debug
-		    ("lido addr: 0x%p, pack header: 0x%X 0x%X 0x%X, bytes lidos: %i",
+		    ("read addr: 0x%p, pack header: 0x%X 0x%X 0x%X, bytes read: %i",
 		     addr, cmd[0], cmd[1], cmd[2], count);
 
 		return count;
@@ -758,5 +680,3 @@ uhet_read(char* buf, size_t count, unsigned long *off)
 
 	return 0;
 }
-
-#endif

@@ -1,3 +1,6 @@
+#ifndef __NRF24LE1_H__
+#define __NRF24LE1_H__
+
 #include <errno.h>
 #include <string.h>
 
@@ -25,7 +28,7 @@
 #define FSR_STP       (1 << 6)
 #define FSR_ENDEBUG   (1 << 7)
 
-/* NVM Extended endurance data  pages: 32,33 */
+/* NVM Extended endurance data  pages: 32,33, these are not accessible over SPI, only internally. */
 #define NVM_NORMAL_PAGE0           34
 #define NVM_NORMAL_PAGE0_INI_ADDR  0x4400
 #define NVM_NORMAL_PAGE0_END_ADDR  0x45FF
@@ -52,19 +55,20 @@
 
 /* Public Interfaces */
 
-void nrf24le1_init();
+void nrf24le1_init(void);
+void nrf24le1_cleanup(void);
 
-void enable_program(uint8_t);
+ssize_t uhet_read(uint8_t* buf, size_t count, unsigned long *off);
+ssize_t uhet_write(uint8_t* buf, size_t count, unsigned long *off);
 
-ssize_t uhet_read(char* buf, size_t count, unsigned long *off);
-ssize_t uhet_write(char* buf, size_t count, unsigned long *off);
-
-ssize_t da_test_show(void);
-ssize_t da_infopage_show(char *buf);
-ssize_t da_nvm_normal_show(char* buf);
+ssize_t da_test_show(int dump);
+ssize_t da_infopage_show(uint8_t * buf);
+ssize_t da_nvm_normal_show(uint8_t * buf);
 ssize_t da_enable_program_show(void);
 
-ssize_t da_infopage_store(const char *, size_t);
-ssize_t da_nvm_normal_store(const char *, size_t);
+ssize_t da_infopage_store(const uint8_t *, size_t);
+ssize_t da_nvm_normal_store(const uint8_t *, size_t);
 ssize_t da_enable_program_store(uint8_t state);
 ssize_t da_erase_all_store();
+
+#endif
