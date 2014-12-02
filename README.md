@@ -38,6 +38,8 @@ All read oprations dump data to stdout.
 
 ### Additional Parameters:
 
+(not yet implemented)
+
 | Parameter          | Function                      |
 | ------------------ | ----------------------------- |
 | `--offset N_BYTES` | Skips N_BYTES bytes           |
