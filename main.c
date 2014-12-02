@@ -24,7 +24,18 @@ typedef enum {
 
 static int usage(void)
 {
-	fprintf(stderr, "Usage: nrf24le1 [show|read|write]\n");
+	fprintf(stderr, "Usage: nrf24le1 [cmds...]\n");
+	fprintf(stderr, "Commands:\n");
+	fprintf(stderr, "\tshow -- show FSR register and ability to modify it\n");
+	fprintf(stderr, "\tread infopage [filename] -- Read infopage and save to filename or to stdout if no filename given\n");
+	fprintf(stderr, "\tread nvm [filename] -- Read NVRAM area\n");
+	fprintf(stderr, "\tread firmware [filename] -- Read firmware area\n");
+	fprintf(stderr, "\twrite infopage [filename] -- Write infopage from file or stdout if no filename given\n");
+	fprintf(stderr, "\twrite nvm [filename] -- Write NVRAM area\n");
+	fprintf(stderr, "\twrite firmware [filename] -- Write firmware area\n");
+	fprintf(stderr, "\n");
+	fprintf(stderr, "filename is taken to be in Intel Hex format if its suffix is .ihx or .hex\n");
+	fprintf(stderr, "if no filename is given the data is read or written from stdout and is expected in Intel Hex format\n");
 	return 1;
 }
 
