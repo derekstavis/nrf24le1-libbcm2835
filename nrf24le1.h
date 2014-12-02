@@ -63,6 +63,7 @@ void nrf24le1_cleanup(void);
 ssize_t uhet_read(uint8_t* buf, size_t count, unsigned long *off);
 ssize_t uhet_write(uint8_t* buf, size_t count, unsigned long *off);
 
+void da_reset(void);
 ssize_t da_test_show(int dump);
 ssize_t da_infopage_show(uint8_t * buf);
 ssize_t da_nvm_normal_show(uint8_t * buf);

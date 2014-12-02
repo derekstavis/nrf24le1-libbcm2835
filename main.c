@@ -14,6 +14,7 @@
 typedef enum {
 	CMD_UNKNOWN,
 	CMD_SHOW,
+	CMD_RESET,
 	CMD_READ_INFO,
 	CMD_READ_NVM,
 	CMD_READ_FIRMWARE,
@@ -33,6 +34,7 @@ static int usage(void)
 	fprintf(stderr, "\twrite infopage [filename] -- Write infopage from file or stdout if no filename given\n");
 	fprintf(stderr, "\twrite nvm [filename] -- Write NVRAM area\n");
 	fprintf(stderr, "\twrite firmware [filename] -- Write firmware area\n");
+	fprintf(stderr, "\treset -- Reset the MCU, useful to restart the code from scratch if it stuck\n");
 	fprintf(stderr, "\n");
 	fprintf(stderr, "filename is taken to be in Intel Hex format if its suffix is .ihx or .hex\n");
 	fprintf(stderr, "if no filename is given the data is read or written from stdout and is expected in Intel Hex format\n");
@@ -48,6 +50,9 @@ static cmd_e args_to_cmd(int argc, char **argv, char **filename)
 
 	if (strcmp(argv[1], "show") == 0)
 		return CMD_SHOW;
+
+	if (strcmp(argv[1], "reset") == 0)
+		return CMD_RESET;
 
 	if (argc < 3)
 		return CMD_UNKNOWN;
@@ -369,6 +374,10 @@ int main(int argc, char **argv)
 		if (da_test_show(0) == 0) {
 			// Now we run the command
 			switch (cmd) {
+				case CMD_RESET:
+					da_reset();
+					break;
+
 				case CMD_WRITE_FIRMWARE:
 					count = read_data(filename, bufread, sizeof(bufread));
 					if (count > 0)

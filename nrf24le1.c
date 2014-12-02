@@ -512,32 +512,31 @@ end:
 	return ret;
 }
 
-void uhet_record_init(void)
+void da_reset(void)
 {
-	printf("Initiate programming\n");
-
-	wiring_set_gpio_value(GPIO_PROG, 1);
-	mdelay(10);
-
 	wiring_set_gpio_value(GPIO_RESET, 0);
 	udelay(5);
 	wiring_set_gpio_value(GPIO_RESET, 1);
+	mdelay(10);
+}
 
-	mdelay(2);
+static void set_prog_bit(int bit)
+{
+	wiring_set_gpio_value(GPIO_PROG, bit);
+	mdelay(1);
+}
+
+void uhet_record_init(void)
+{
+	printf("Initiate programming\n");
+	set_prog_bit(1);
+	da_reset();
 }
 
 void uhet_record_end(void)
 {
-	wiring_set_gpio_value(GPIO_PROG, 0);
-	mdelay(1);
-
-	// reset
-	wiring_set_gpio_value(GPIO_RESET, 0);
-	udelay(1);
-	wiring_set_gpio_value(GPIO_RESET, 1);
-
-	mdelay(10);
-
+	set_prog_bit(0);
+	da_reset();
 	printf("Finished programming\n");
 }
 

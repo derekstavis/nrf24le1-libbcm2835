@@ -18,6 +18,17 @@ linux device driver.
 
 For further development, the tool should conform to the above protocol.
 
+### Miscallenous
+
+`nrf24le1 show`
+
+Show the FSR register and make sure we can modify it, this demonstrates proper
+communication on the SPI bus to the nRF24LE1 module.
+
+`nrf24le1 reset`
+
+Reset the unit on the programmer, this resets the MCU to start the program afresh.
+
 ### Reading data from nRF24LE1
 
 `nrf24le1 read infopage [filename]`
