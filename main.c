@@ -306,12 +306,12 @@ static uint16_t read_data(char *filename, uint8_t *buf, uint16_t size)
 		f = fopen(filename, "rb");
 		if (f == NULL) {
 			fprintf(stderr, "Error opening file '%s', saving as hex to stdout.\n", filename);
-			f = stdout;
+			f = stdin;
 			is_hex = 1;
 		}
 	} else {
 		is_hex = 1;
-		f = stdout;
+		f = stdin;
 	}
 
 	if (is_hex)
