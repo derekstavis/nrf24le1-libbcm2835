@@ -141,9 +141,9 @@ int _read_nvm_normal(uint8_t *buf)
 	cmd[0] = SPICMD_READ;
 	for (i = 0; i < NVM_NORMAL_MEM_SIZE; i += N_BYTES_FOR_READ) {
 
-		*addr = htole16(i + NVM_NORMAL_PAGE0_INI_ADDR);
+		*addr = htobe16(i + NVM_NORMAL_PAGE0_INI_ADDR);
 		ret = write_then_read(cmd, 3, in, N_BYTES_FOR_READ);
-		if (0 != ret)
+		if (0 == ret)
 			return ret;
 
 		memcpy(p, in, N_BYTES_FOR_READ);
@@ -355,10 +355,10 @@ int _write_nvm_normal(const uint8_t *buf)
 		_wait_for_ready();
 
 		cmd[0] = SPICMD_PROGRAM;
-		*addr = htole16(i + NVM_NORMAL_PAGE0_INI_ADDR);
+		*addr = htobe16(i + NVM_NORMAL_PAGE0_INI_ADDR);
 		memcpy(cmd + 3, mem, N_BYTES_FOR_WRITE);
 
-		if (0 != write_then_read(cmd, 3 + N_BYTES_FOR_WRITE, NULL, 0))
+		if (0 == write_then_read(cmd, 3 + N_BYTES_FOR_WRITE, NULL, 0))
 			error_count++;
 
 		mem += N_BYTES_FOR_WRITE;
