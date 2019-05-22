@@ -3,7 +3,7 @@ PROJECT_PATH	= $(pwd)
 
 CC	    = gcc
 INCLUDE	= -I/usr/local/include -I.
-include Makefile.dev
+
 CFLAGS	= -O3 -Wall $(INCLUDE) -Winline -pipe $(CFLAGSDEV)
 
 LDFLAGS	= -L/usr/local/lib
